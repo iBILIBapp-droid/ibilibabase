@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PurpleArchive | Cloud Storage</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="logo">
+            <i data-lucide="archive"></i>
+            <span>PurpleArchive</span>
+        </div>
+        <div class="sidebar-label">LIBRARIES</div>
+        <ul id="libraryList" class="library-list"></ul>
+        <button class="btn-new-lib" onclick="addLibrary()">
+            <i data-lucide="plus-circle"></i> New Library
+        </button>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <div class="header-info">
+                <button class="menu-toggle" onclick="toggleSidebar()">
+                    <i data-lucide="menu"></i>
+                </button>
+                <div>
+                    <h1 id="activeLibraryName">Select a Library</h1>
+                    <p id="fileCount">0 files stored</p>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <div class="search-container">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Search files..." oninput="filterFiles()">
+                </div>
+                <button class="btn-upload" onclick="uploadFile()">
+                    <i data-lucide="upload-cloud"></i> <span>Upload</span>
+                </button>
+            </div>
+        </header>
+
+        <section class="archive-container">
+            <div id="fileGrid" class="archive-grid"></div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
