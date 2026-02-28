@@ -2,54 +2,324 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PurpleArchive | Cloud Storage</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>iBilib | Digital Archive</title>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Apply theme instantly before paint — no class on html, goes straight to body -->
+    <script>
+        (function() {
+            if (localStorage.getItem('ibiblib-theme') === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <aside class="sidebar" id="sidebar">
-        <div class="logo">
-            <i data-lucide="archive"></i>
-            <span>PurpleArchive</span>
+    <!-- LOADING INTRO -->
+    <div id="intro-screen">
+        <div class="intro-orb"></div>
+        <div class="intro-content">
+            <div class="intro-logo-wrap">
+                <div class="intro-logo-icon">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                </div>
+                <span class="intro-logo-text">iBilib</span>
+            </div>
+            <p class="intro-tagline">Digital Archive</p>
+            <div class="intro-bar-wrap"><div class="intro-bar"></div></div>
         </div>
-        <div class="sidebar-label">LIBRARIES</div>
-        <ul id="libraryList" class="library-list"></ul>
-        <button class="btn-new-lib" onclick="addLibrary()">
-            <i data-lucide="plus-circle"></i> New Library
-        </button>
-    </aside>
+    </div>
 
-    <main class="main-content">
-        <header>
-            <div class="header-info">
-                <button class="menu-toggle" onclick="toggleSidebar()">
+    <!-- NAVBAR -->
+    <nav class="navbar" id="main-navbar">
+        <!-- Row 1: logo / nav links / right actions -->
+        <div class="nav-inner">
+            <!-- Logo -->
+            <div class="logo" onclick="showPage('home')">
+                <div class="logo-icon"><i data-lucide="layout-grid"></i></div>
+                <span>iBilib</span>
+            </div>
+
+            <!-- Center nav links (desktop only) -->
+            <div class="nav-links">
+                <a class="nav-link active" onclick="showPage('home')">Home</a>
+                <a class="nav-link" onclick="loadResearch()">Research</a>
+                <a class="nav-link" onclick="loadMaterials()">Materials</a>
+                <a class="nav-link" onclick="loadPrompts()">Prompts</a>
+            </div>
+
+            <!-- Right: search + theme toggle + admin (desktop) -->
+            <div class="nav-right">
+                <div class="search-wrap">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="search-input" class="search-input" placeholder="Search resources…" oninput="handleSearch(this.value)" autocomplete="off" spellcheck="false">
+                </div>
+                <!-- Theme toggle -->
+                <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle theme">
+                    <span class="theme-track">
+                        <span class="theme-thumb">
+                            <span class="theme-icon theme-icon-moon"><i data-lucide="moon"></i></span>
+                            <span class="theme-icon theme-icon-sun"><i data-lucide="sun"></i></span>
+                        </span>
+                    </span>
+                </button>
+                <button class="btn-admin" onclick="openAdmin()">
+                    <i data-lucide="shield-check"></i>
+                    <span>Admin</span>
+                </button>
+            </div>
+
+            <!-- Mobile right: theme toggle + admin icon + hamburger -->
+            <div class="nav-mobile-right">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">
+                    <span class="theme-track">
+                        <span class="theme-thumb">
+                            <span class="theme-icon theme-icon-moon"><i data-lucide="moon"></i></span>
+                            <span class="theme-icon theme-icon-sun"><i data-lucide="sun"></i></span>
+                        </span>
+                    </span>
+                </button>
+                <button class="btn-icon" onclick="openAdmin()" title="Admin">
+                    <i data-lucide="shield-check"></i>
+                </button>
+                <button class="btn-icon nav-mobile-menu" onclick="toggleMobileMenu()">
                     <i data-lucide="menu"></i>
                 </button>
-                <div>
-                    <h1 id="activeLibraryName">Select a Library</h1>
-                    <p id="fileCount">0 files stored</p>
-                </div>
             </div>
-            
-            <div class="header-actions">
-                <div class="search-container">
-                    <i data-lucide="search" class="search-icon"></i>
-                    <input type="text" id="searchInput" placeholder="Search files..." oninput="filterFiles()">
-                </div>
-                <button class="btn-upload" onclick="uploadFile()">
-                    <i data-lucide="upload-cloud"></i> <span>Upload</span>
-                </button>
-            </div>
-        </header>
+        </div>
 
-        <section class="archive-container">
-            <div id="fileGrid" class="archive-grid"></div>
+        <!-- Row 2: search bar — always visible on mobile -->
+        <div class="nav-mobile-search-row">
+            <div class="search-wrap">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="text" id="search-input-mobile" class="search-input" placeholder="Search resources…" oninput="handleSearch(this.value)" autocomplete="off" spellcheck="false">
+            </div>
+        </div>
+
+        <!-- Mobile dropdown — nav links only -->
+        <div class="mobile-menu hidden" id="mobile-menu">
+            <a class="mob-link" onclick="showPage('home'); toggleMobileMenu()"><i data-lucide="home"></i> Home</a>
+            <a class="mob-link" onclick="loadResearch(); toggleMobileMenu()"><i data-lucide="book-open"></i> Research Studies</a>
+            <a class="mob-link" onclick="loadMaterials(); toggleMobileMenu()"><i data-lucide="layers"></i> Learning Materials</a>
+            <a class="mob-link" onclick="loadPrompts(); toggleMobileMenu()"><i data-lucide="pen-line"></i> Writing Prompts</a>
+        </div>
+    </nav>
+
+    <!-- PAGES -->
+    <main>
+
+        <!-- HOME PAGE -->
+        <section id="home-page">
+            <div class="hero-orb"></div>
+            <div class="hero-rings" aria-hidden="true">
+                <div class="ring ring1"></div>
+                <div class="ring ring2"></div>
+                <div class="ring ring3"></div>
+            </div>
+            <div class="hero-grid" aria-hidden="true"></div>
+
+            <div class="hero">
+                <div class="hero-visual">
+                    <img src="image/hero.webp" alt="iBilib Archive">
+                </div>
+                <h1>Access Your <span class="purple-highlight">Learning</span> Resources</h1>
+                <p>Explore the Aringay NHS digital archive — research studies, learning materials, and writing prompts, all in one place.</p>
+                <div class="hero-cta">
+                    <button class="btn-cta-primary" onclick="loadResearch()">Browse Archive</button>
+                    <button class="btn-cta-ghost" onclick="loadMaterials()">View Materials</button>
+                </div>
+                <div class="hero-logos">
+                    <span>Research</span>
+                    <span>·</span>
+                    <span>Materials</span>
+                    <span>·</span>
+                    <span>Prompts</span>
+                    <span>·</span>
+                    <span>Aringay NHS</span>
+                </div>
+            </div>
+
+            <div class="cards-section">
+                <div class="section-label">Browse by Category</div>
+                <div class="category-stack">
+                    <div class="liquid-card" onclick="loadResearch()">
+                        <div class="card-icon-wrap"><i data-lucide="book-open"></i></div>
+                        <div class="card-inner">
+                            <h3>Research Studies</h3>
+                            <p>Student research archives and scientific papers</p>
+                        </div>
+                        <i data-lucide="arrow-right" class="card-arrow"></i>
+                    </div>
+                    <div class="liquid-card" onclick="loadMaterials()">
+                        <div class="card-icon-wrap"><i data-lucide="layers"></i></div>
+                        <div class="card-inner">
+                            <h3>Learning Materials</h3>
+                            <p>Modules, guides, and study resources</p>
+                        </div>
+                        <i data-lucide="arrow-right" class="card-arrow"></i>
+                    </div>
+                    <div class="liquid-card" onclick="loadPrompts()">
+                        <div class="card-icon-wrap"><i data-lucide="pen-line"></i></div>
+                        <div class="card-inner">
+                            <h3>Writing Prompts</h3>
+                            <p>Task repository and creative writing tasks</p>
+                        </div>
+                        <i data-lucide="arrow-right" class="card-arrow"></i>
+                    </div>
+                </div>
+            </div>
         </section>
+
+        <!-- CATEGORY PAGE -->
+        <section id="category-page" class="hidden">
+            <div class="inner-page-wrap">
+                <div class="hero-mini">
+                    <button class="btn-icon" id="category-back-btn"><i data-lucide="arrow-left"></i></button>
+                    <h2 id="category-page-title">Folders</h2>
+                </div>
+                <div id="category-container" class="category-stack"></div>
+            </div>
+        </section>
+
+        <!-- BROWSER PAGE -->
+        <section id="browser-page" class="hidden">
+            <div class="inner-page-wrap">
+                <div class="hero-mini">
+                    <button class="btn-icon" id="browser-back-btn"><i data-lucide="arrow-left"></i></button>
+                    <h2 id="browser-title">Files</h2>
+                </div>
+                <div id="browser-container" class="category-stack"></div>
+            </div>
+        </section>
+
+        <!-- VIEWER PAGE -->
+        <section id="viewer-page" class="hidden">
+            <div class="viewer-nav">
+                <button class="btn-icon" onclick="closeViewer()"><i data-lucide="arrow-left"></i></button>
+                <span>Document Reader</span>
+                <div style="width:42px"></div>
+            </div>
+            <div class="pdf-wrapper">
+                <iframe id="pdf-frame" src=""></iframe>
+            </div>
+        </section>
+
     </main>
 
     <script src="script.js"></script>
 </body>
 </html>
+
+    <!-- ═══════════════════════════════════════════
+         ADMIN LOGIN MODAL
+    ═══════════════════════════════════════════ -->
+    <div id="admin-modal" class="modal-overlay hidden">
+        <div class="modal-box" id="admin-login-box">
+            <div class="modal-close" onclick="closeAdmin()"><i data-lucide="x"></i></div>
+            <div class="modal-logo">
+                <div class="modal-logo-icon"><i data-lucide="shield-check"></i></div>
+            </div>
+            <h2 class="modal-title">Admin Access</h2>
+            <p class="modal-sub">Enter your credentials to continue</p>
+            <form class="modal-form" onsubmit="submitLogin(event)">
+                <div class="field-wrap" id="field-username">
+                    <label>Username</label>
+                    <div class="input-wrap">
+                        <i data-lucide="user" class="input-icon"></i>
+                        <input type="text" id="login-user" placeholder="root" autocomplete="off" spellcheck="false">
+                    </div>
+                </div>
+                <div class="field-wrap" id="field-password">
+                    <label>Password</label>
+                    <div class="input-wrap">
+                        <i data-lucide="lock" class="input-icon"></i>
+                        <input type="password" id="login-pass" placeholder="••••••••">
+                        <button type="button" class="toggle-pass" onclick="togglePass()">
+                            <i data-lucide="eye" id="pass-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="login-error hidden" id="login-error">
+                    <i data-lucide="alert-circle"></i>
+                    <span id="login-error-msg">Invalid credentials</span>
+                </div>
+                <button type="submit" class="btn-cta-primary modal-submit" id="login-btn">
+                    <span>Sign In</span>
+                    <i data-lucide="arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         ADMIN UPLOAD PANEL
+    ═══════════════════════════════════════════ -->
+    <div id="admin-panel" class="modal-overlay hidden">
+        <div class="modal-box upload-box">
+            <div class="upload-header">
+                <div class="upload-header-left">
+                    <div class="modal-logo-icon small"><i data-lucide="upload-cloud"></i></div>
+                    <div>
+                        <h2 class="modal-title" style="margin:0">Upload Files</h2>
+                        <p class="modal-sub" style="margin:0">Max 10 files per session</p>
+                    </div>
+                </div>
+                <button class="modal-close static" onclick="closeAdminPanel()"><i data-lucide="x"></i></button>
+            </div>
+            <div class="field-wrap">
+                <label>Upload to Category</label>
+                <div class="cat-picker">
+                    <button type="button" class="cat-btn active" data-cat="research" onclick="selectCat(this)">
+                        <i data-lucide="book-open"></i> Research
+                    </button>
+                    <button type="button" class="cat-btn" data-cat="materials" onclick="selectCat(this)">
+                        <i data-lucide="layers"></i> Materials
+                    </button>
+                    <button type="button" class="cat-btn" data-cat="prompts" onclick="selectCat(this)">
+                        <i data-lucide="pen-line"></i> Prompts
+                    </button>
+                </div>
+            </div>
+            <div class="field-wrap">
+                <label>Subfolder <span class="label-hint">(optional — e.g. Grade-11)</span></label>
+                <div class="input-wrap">
+                    <i data-lucide="folder" class="input-icon"></i>
+                    <input type="text" id="upload-subfolder" placeholder="Leave blank for root category" autocomplete="off">
+                </div>
+            </div>
+            <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()"
+                 ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event)">
+                <input type="file" id="file-input" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" style="display:none" onchange="addFiles(this.files)">
+                <i data-lucide="upload-cloud" class="dz-icon"></i>
+                <p class="dz-title">Drop files here or <span class="purple-highlight">click to browse</span></p>
+                <p class="dz-sub">PDF, DOC, DOCX, PPT, PPTX, TXT · Max 10 files</p>
+            </div>
+            <div id="file-queue" class="file-queue hidden">
+                <div class="queue-header">
+                    <span id="queue-count">0 / 10 files</span>
+                    <button type="button" class="clear-all" onclick="clearQueue()">Clear all</button>
+                </div>
+                <div id="queue-list"></div>
+            </div>
+            <div id="upload-progress-wrap" class="upload-progress-wrap hidden">
+                <div class="progress-label">
+                    <span id="progress-label-text">Uploading…</span>
+                    <span id="progress-pct">0%</span>
+                </div>
+                <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+            </div>
+            <div class="upload-footer">
+                <button class="btn-cta-ghost" onclick="closeAdminPanel()">Cancel</button>
+                <button class="btn-cta-primary modal-submit" id="upload-btn" onclick="startUpload()" disabled>
+                    <i data-lucide="upload-cloud"></i>
+                    <span>Upload Files</span>
+                </button>
+            </div>
+            <div id="upload-toast" class="upload-toast hidden"></div>
+        </div>
+    </div>
