@@ -2,11 +2,11 @@ const SB_URL = "https://alpvtuximvsrsopsxghq.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscHZ0dXhpbXZzcnNvcHN4Z2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMzUyNTMsImV4cCI6MjA4NzcxMTI1M30.XvAkTQo0QssHGFO7EWFFu7-wLMwP2t9WRS6fb9Jo37o";
 
 // ─── State ───────────────────────────────────────────────
-let currentPage      = 'home';   // 'home' | 'category' | 'browser'
-let currentPath      = '';       // active folder path, e.g. 'research/Grade-11'
+let currentPage = 'home';   // 'home' | 'category' | 'browser'
+let currentPath = '';       // active folder path, e.g. 'research/Grade-11'
 let currentRootScope = '';       // root being browsed, e.g. 'research'
-let currentFiles     = [];       // files currently visible in browser page
-let searchDebounce   = null;
+let currentFiles = [];       // files currently visible in browser page
+let searchDebounce = null;
 
 // ─── Page control ─────────────────────────────────────────
 function showPage(p) {
@@ -57,7 +57,7 @@ async function crawlAll(prefix, results = []) {
     if (!Array.isArray(items)) return results;
 
     const folders = items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder');
-    const files   = items.filter(i =>  i.id && i.name !== '.emptyFolderPlaceholder');
+    const files = items.filter(i => i.id && i.name !== '.emptyFolderPlaceholder');
 
     for (const f of files) {
         results.push({ name: f.name, fullPath: `${prefix}/${f.name}`, size: f.metadata?.size });
@@ -76,18 +76,26 @@ async function smartNavigate(path, title) {
     // Set root scope from first segment
     currentRootScope = path.split('/')[0];
 
-    container.innerHTML = `<div class="liquid-card animate-pulse" style="opacity:1">
-        <div class="card-icon-wrap"><i data-lucide="loader"></i></div>
-        <div class="card-inner"><h3>Loading ${title}…</h3><p>Syncing with archive</p></div>
-    </div>`;
+    let skeletonHTML = '';
+    for (let i = 0; i < 6; i++) {
+        skeletonHTML += `<div class="liquid-card skeleton-card animate-pulse" style="opacity:1; animation-delay: ${i * 0.1}s">
+            <div class="card-icon-wrap"></div>
+            <div class="card-inner">
+                <div class="skeleton-line skeleton-title"></div>
+                <div class="skeleton-line skeleton-desc"></div>
+            </div>
+            <div class="skeleton-action"></div>
+        </div>`;
+    }
+    container.innerHTML = skeletonHTML;
     showPage('category');
     document.getElementById('category-page-title').innerText = title;
     lucide.createIcons();
 
     try {
-        const items   = await listPath(path);
+        const items = await listPath(path);
         const folders = items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder');
-        const files   = items.filter(i =>  i.id && i.name !== '.emptyFolderPlaceholder');
+        const files = items.filter(i => i.id && i.name !== '.emptyFolderPlaceholder');
 
         if (folders.length > 0) {
             container.innerHTML = "";
@@ -125,7 +133,7 @@ async function smartNavigate(path, title) {
 }
 
 // ─── Render a list of file objects ────────────────────────
-function renderFileObjects(files, container) {
+function renderFileObjects(files, container, isSearch = false) {
     container.innerHTML = "";
     if (!files || files.length === 0) {
         container.innerHTML = `<div class="liquid-card" style="opacity:1">
@@ -136,14 +144,11 @@ function renderFileObjects(files, container) {
         return;
     }
     files.forEach((f, i) => {
-        // ?download= tells Supabase to send Content-Disposition: attachment
-        const downloadUrl = `${SB_URL}/storage/v1/object/public/archives/${f.fullPath}?download=`;
-        // View URL must NOT have ?download= or Google Docs Viewer will fail
-        const viewUrl = `${SB_URL}/storage/v1/object/public/archives/${f.fullPath}`;
+        const baseUrl = `${SB_URL}/storage/v1/object/public/archives/${f.fullPath}`;
 
         const div = document.createElement('div');
         div.className = "liquid-card animate-tile";
-        div.style.animationDelay = `${i * 0.06}s`;
+        div.style.animationDelay = `${i * 0.07}s`;
 
         const parts = f.fullPath.split('/');
         const breadcrumb = parts.slice(0, -1).join(' › ');
@@ -152,13 +157,13 @@ function renderFileObjects(files, container) {
             <div class="card-icon-wrap"><i data-lucide="file-text"></i></div>
             <div class="card-inner">
                 <h3>${f.name.replace(/_/g, ' ')}</h3>
-                <p>${breadcrumb || formatSize(f.size)}</p>
+                <p>${isSearch ? breadcrumb : formatSize(f.size)}</p>
             </div>
             <div style="display:flex;gap:8px;flex-shrink:0">
-                <button class="btn-icon" title="Download" onclick="event.stopPropagation();directDownload('${downloadUrl}','${f.name}')">
+                <button class="btn-icon" title="Download" onclick="event.stopPropagation(); directDownload('${baseUrl}', '${f.name}')">
                     <i data-lucide="download"></i>
                 </button>
-                <button class="btn-purple-action" onclick="event.stopPropagation();openViewer('${viewUrl}')">View</button>
+                <button class="btn-purple-action" onclick="event.stopPropagation(); openViewer('${baseUrl}')">View</button>
             </div>`;
         container.appendChild(div);
     });
@@ -215,10 +220,18 @@ async function runGlobalSearch(q) {
     currentPage = 'browser';
 
     document.getElementById('browser-title').innerText = `Search: "${q}"`;
-    container.innerHTML = `<div class="liquid-card animate-pulse" style="opacity:1">
-        <div class="card-icon-wrap"><i data-lucide="search"></i></div>
-        <div class="card-inner"><h3>Searching entire library…</h3><p>research · materials · prompts</p></div>
-    </div>`;
+    let skeletonHTML = '';
+    for (let i = 0; i < 6; i++) {
+        skeletonHTML += `<div class="liquid-card skeleton-card animate-pulse" style="opacity:1; animation-delay: ${i * 0.1}s">
+            <div class="card-icon-wrap"></div>
+            <div class="card-inner">
+                <div class="skeleton-line skeleton-title"></div>
+                <div class="skeleton-line skeleton-desc"></div>
+            </div>
+            <div class="skeleton-action"></div>
+        </div>`;
+    }
+    container.innerHTML = skeletonHTML;
     lucide.createIcons();
 
     document.getElementById('browser-back-btn').onclick = () => showPage('home');
@@ -232,7 +245,7 @@ async function runGlobalSearch(q) {
         ]);
 
         const all = [...resFiles, ...matFiles, ...proFiles];
-        const matches = all.filter(f => f.name.toLowerCase().replace(/_/g,' ').includes(q));
+        const matches = all.filter(f => f.name.toLowerCase().replace(/_/g, ' ').includes(q));
 
         document.getElementById('browser-title').innerText =
             matches.length ? `"${q}" — ${matches.length} result${matches.length > 1 ? 's' : ''}` : `No results for "${q}"`;
@@ -251,7 +264,7 @@ async function runGlobalSearch(q) {
 function runLocalSearch(q) {
     const container = document.getElementById('browser-container');
     const matches = currentFiles.filter(f =>
-        f.name.toLowerCase().replace(/_/g,' ').includes(q)
+        f.name.toLowerCase().replace(/_/g, ' ').includes(q)
     );
     document.getElementById('browser-title').innerText =
         matches.length ? `"${q}" — ${matches.length} result${matches.length > 1 ? 's' : ''}` : `No results for "${q}"`;
@@ -270,17 +283,25 @@ async function runScopedSearch(q, root) {
 
     const rootLabels = { research: 'Research Studies', materials: 'Learning Materials', prompts: 'Writing Prompts' };
     document.getElementById('browser-title').innerText = `Searching in ${rootLabels[root] || root}…`;
-    container.innerHTML = `<div class="liquid-card animate-pulse" style="opacity:1">
-        <div class="card-icon-wrap"><i data-lucide="search"></i></div>
-        <div class="card-inner"><h3>Searching ${rootLabels[root] || root}…</h3><p>Looking for "${q}"</p></div>
-    </div>`;
+    let skeletonHTML = '';
+    for (let i = 0; i < 6; i++) {
+        skeletonHTML += `<div class="liquid-card skeleton-card animate-pulse" style="opacity:1; animation-delay: ${i * 0.1}s">
+            <div class="card-icon-wrap"></div>
+            <div class="card-inner">
+                <div class="skeleton-line skeleton-title"></div>
+                <div class="skeleton-line skeleton-desc"></div>
+            </div>
+            <div class="skeleton-action"></div>
+        </div>`;
+    }
+    container.innerHTML = skeletonHTML;
     lucide.createIcons();
 
     document.getElementById('browser-back-btn').onclick = () => showPage('home');
 
     try {
         const all = await crawlAll(root);
-        const matches = all.filter(f => f.name.toLowerCase().replace(/_/g,' ').includes(q));
+        const matches = all.filter(f => f.name.toLowerCase().replace(/_/g, ' ').includes(q));
         document.getElementById('browser-title').innerText =
             matches.length
                 ? `"${q}" in ${rootLabels[root]} — ${matches.length} result${matches.length > 1 ? 's' : ''}`
@@ -313,12 +334,23 @@ function closeViewer() {
 }
 
 function directDownload(url, filename) {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // 1. Append ?download= — tells Supabase to send Content-Disposition: attachment
+    const downloadUrl = url + (url.includes('?') ? '&' : '?') + 'download=';
+
+    // 2. Create a hidden anchor element
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', filename); // Suggest the filename
+
+    // 3. target _self triggers the Android Download Manager
+    link.target = '_self';
+
+    // 4. Programmatically click the link
+    document.body.appendChild(link);
+    link.click();
+
+    // 5. Cleanup
+    document.body.removeChild(link);
 }
 
 function formatSize(bytes) {
@@ -328,9 +360,9 @@ function formatSize(bytes) {
     return (bytes / 1048576).toFixed(1) + ' MB';
 }
 
-function loadResearch()  { smartNavigate('research',  'Research Studies'); }
+function loadResearch() { smartNavigate('research', 'Research Studies'); }
 function loadMaterials() { smartNavigate('materials', 'Learning Materials'); }
-function loadPrompts()   { smartNavigate('prompts',   'Writing Prompts'); }
+function loadPrompts() { smartNavigate('prompts', 'Writing Prompts'); }
 
 // ─── Theme toggle ──────────────────────────────
 function toggleTheme() {
@@ -402,7 +434,7 @@ function closeAdmin() {
 }
 
 function togglePass() {
-    const inp  = document.getElementById('login-pass');
+    const inp = document.getElementById('login-pass');
     const icon = document.getElementById('pass-eye');
     if (inp.type === 'password') {
         inp.type = 'text';
@@ -415,10 +447,10 @@ function togglePass() {
 }
 
 function setLoginError(show, msg = 'Invalid username or password') {
-    const el  = document.getElementById('login-error');
+    const el = document.getElementById('login-error');
     const txt = document.getElementById('login-error-msg');
-    const fu  = document.getElementById('field-username');
-    const fp  = document.getElementById('field-password');
+    const fu = document.getElementById('field-username');
+    const fp = document.getElementById('field-password');
     if (show) {
         txt.textContent = msg;
         el.classList.remove('hidden');
@@ -435,7 +467,7 @@ function submitLogin(e) {
     e.preventDefault();
     const user = document.getElementById('login-user').value.trim();
     const pass = document.getElementById('login-pass').value;
-    const btn  = document.getElementById('login-btn');
+    const btn = document.getElementById('login-btn');
 
     if (!user || !pass) {
         setLoginError(true, 'Please fill in both fields');
@@ -465,10 +497,10 @@ function submitLogin(e) {
 
 // Close modal on overlay click
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('admin-modal').addEventListener('click', function(e) {
+    document.getElementById('admin-modal').addEventListener('click', function (e) {
         if (e.target === this) closeAdmin();
     });
-    document.getElementById('admin-panel').addEventListener('click', function(e) {
+    document.getElementById('admin-panel').addEventListener('click', function (e) {
         if (e.target === this) closeAdminPanel();
     });
 });
@@ -476,9 +508,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // ═══════════════════════════════════════════════
 //  ADMIN — UPLOAD PANEL
 // ═══════════════════════════════════════════════
-let uploadQueue  = [];   // { file, name }
-let selectedCat  = 'research';
-const MAX_FILES  = 10;
+let uploadQueue = [];   // { file, name }
+let selectedCat = 'research';
+const MAX_FILES = 10;
 
 function openAdminPanel() {
     clearQueue();
@@ -505,9 +537,9 @@ function selectCat(btn) {
 }
 
 // ── Drop zone ──────────────────────────────────
-function dzOver(e)  { e.preventDefault(); document.getElementById('dropzone').classList.add('over'); }
+function dzOver(e) { e.preventDefault(); document.getElementById('dropzone').classList.add('over'); }
 function dzLeave(e) { document.getElementById('dropzone').classList.remove('over'); }
-function dzDrop(e)  {
+function dzDrop(e) {
     e.preventDefault();
     document.getElementById('dropzone').classList.remove('over');
     addFiles(e.dataTransfer.files);
@@ -546,10 +578,10 @@ function clearQueue() {
 }
 
 function renderQueue() {
-    const wrap  = document.getElementById('file-queue');
-    const list  = document.getElementById('queue-list');
+    const wrap = document.getElementById('file-queue');
+    const list = document.getElementById('queue-list');
     const count = document.getElementById('queue-count');
-    const btn   = document.getElementById('upload-btn');
+    const btn = document.getElementById('upload-btn');
 
     if (uploadQueue.length === 0) {
         wrap.classList.add('hidden');
@@ -570,7 +602,7 @@ function renderQueue() {
         div.innerHTML = `
             <div class="queue-item-icon"><i data-lucide="${iconName}"></i></div>
             <div class="queue-item-info">
-                <div class="queue-item-name">${item.name.replace(/_/g,' ')}</div>
+                <div class="queue-item-name">${item.name.replace(/_/g, ' ')}</div>
                 <div class="queue-item-size">${formatSize(item.file.size)}</div>
             </div>
             ${item.status === 'pending' ? `<button class="queue-item-remove" onclick="removeFile(${idx})"><i data-lucide="x"></i></button>` : ''}`;
@@ -584,15 +616,15 @@ async function startUpload() {
     if (uploadQueue.length === 0) return;
 
     const subfolder = document.getElementById('upload-subfolder').value.trim().replace(/\//g, '-');
-    const basePath  = subfolder ? `${selectedCat}/${subfolder}` : selectedCat;
+    const basePath = subfolder ? `${selectedCat}/${subfolder}` : selectedCat;
 
-    const btn     = document.getElementById('upload-btn');
+    const btn = document.getElementById('upload-btn');
     const progWrap = document.getElementById('upload-progress-wrap');
-    const fill    = document.getElementById('progress-fill');
-    const pct     = document.getElementById('progress-pct');
-    const label   = document.getElementById('progress-label-text');
+    const fill = document.getElementById('progress-fill');
+    const pct = document.getElementById('progress-pct');
+    const label = document.getElementById('progress-label-text');
 
-    btn.disabled  = true;
+    btn.disabled = true;
     btn.innerHTML = '<i data-lucide="loader"></i><span>Uploading…</span>';
     progWrap.classList.remove('hidden');
     document.getElementById('upload-toast').classList.add('hidden');
@@ -612,10 +644,10 @@ async function startUpload() {
                 {
                     method: 'POST',
                     headers: {
-                        'apikey':        SB_KEY,
+                        'apikey': SB_KEY,
                         'Authorization': `Bearer ${SB_KEY}`,
-                        'Content-Type':  item.file.type || 'application/octet-stream',
-                        'x-upsert':      'true'
+                        'Content-Type': item.file.type || 'application/octet-stream',
+                        'x-upsert': 'true'
                     },
                     body: item.file
                 }
@@ -635,7 +667,7 @@ async function startUpload() {
 
         const progress = Math.round(((i + 1) / uploadQueue.length) * 100);
         fill.style.width = progress + '%';
-        pct.textContent  = progress + '%';
+        pct.textContent = progress + '%';
         renderQueue();
     }
 
