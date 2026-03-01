@@ -518,11 +518,17 @@ function openAdminPanel() {
     document.querySelectorAll('.cat-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.cat === 'research');
     });
-    document.getElementById('upload-subfolder').value = '';
+    const subInput = document.getElementById('upload-subfolder');
+    if (subInput) subInput.value = '';
+    const newWrap = document.getElementById('new-folder-wrap');
+    if (newWrap) newWrap.style.display = 'none';
+    const newBtn = document.getElementById('subfolder-new-btn');
+    if (newBtn) newBtn.classList.remove('active');
     document.getElementById('upload-progress-wrap').classList.add('hidden');
     document.getElementById('upload-toast').classList.add('hidden');
     document.getElementById('admin-panel').classList.remove('hidden');
     lucide.createIcons();
+    loadSubfolders('research');
 }
 
 function closeAdminPanel() {
@@ -534,6 +540,91 @@ function selectCat(btn) {
     document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     selectedCat = btn.dataset.cat;
+    loadSubfolders(selectedCat);
+}
+
+async function loadSubfolders(cat) {
+    const select = document.getElementById('upload-subfolder-select');
+    const hint   = document.getElementById('subfolder-hint');
+    if (!select) return;
+
+    // Animate: loading state
+    hint.textContent = '⏳ Loading…';
+    hint.classList.remove('pulse');
+    select.classList.add('loading');
+    select.classList.remove('loaded');
+    select.innerHTML = '<option value="">— Root (no subfolder) —</option>';
+
+    try {
+        const items = await listPath(cat);
+        const folders = Array.isArray(items)
+            ? items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder')
+            : [];
+
+        // Clear + rebuild options
+        select.innerHTML = '<option value="">— Root (no subfolder) —</option>';
+
+        if (folders.length === 0) {
+            hint.textContent = 'No subfolders yet';
+        } else {
+            for (const f of folders) {
+                const opt = document.createElement('option');
+                opt.value = f.name;
+                opt.textContent = '📁 ' + f.name;
+                select.appendChild(opt);
+
+                try {
+                    const sub = await listPath(cat + '/' + f.name);
+                    const subFolders = Array.isArray(sub)
+                        ? sub.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder')
+                        : [];
+                    subFolders.forEach(sf => {
+                        const subOpt = document.createElement('option');
+                        subOpt.value = f.name + '/' + sf.name;
+                        subOpt.textContent = '  └ 📁 ' + f.name + ' › ' + sf.name;
+                        select.appendChild(subOpt);
+                    });
+                } catch(e) {}
+            }
+            hint.textContent = '✦ ' + folders.length + ' folder' + (folders.length > 1 ? 's' : '') + ' found';
+        }
+
+        // Animate in
+        select.classList.remove('loading');
+        select.classList.add('loaded');
+        void select.offsetWidth; // force reflow
+        hint.classList.add('pulse');
+        setTimeout(() => hint.classList.remove('pulse'), 600);
+
+    } catch(e) {
+        hint.textContent = '⚠️ Could not load folders';
+        select.classList.remove('loading');
+    }
+    lucide.createIcons();
+}
+
+function onSubfolderSelect(sel) {
+    // If user picks from dropdown, clear the manual text input
+    if (sel.value) {
+        const input = document.getElementById('upload-subfolder');
+        if (input) input.value = '';
+        document.getElementById('new-folder-wrap').style.display = 'none';
+        document.getElementById('subfolder-new-btn').classList.remove('active');
+    }
+}
+
+function toggleNewFolder() {
+    const wrap = document.getElementById('new-folder-wrap');
+    const btn  = document.getElementById('subfolder-new-btn');
+    const sel  = document.getElementById('upload-subfolder-select');
+    const isHidden = wrap.style.display === 'none';
+    wrap.style.display = isHidden ? 'flex' : 'none';
+    btn.classList.toggle('active', isHidden);
+    if (isHidden) {
+        sel.value = ''; // deselect dropdown
+        document.getElementById('upload-subfolder').focus();
+    }
+    lucide.createIcons();
 }
 
 // ── Drop zone ──────────────────────────────────
@@ -615,7 +706,16 @@ function renderQueue() {
 async function startUpload() {
     if (uploadQueue.length === 0) return;
 
-    const subfolder = document.getElementById('upload-subfolder').value.trim().replace(/\//g, '-');
+    // Get subfolder: prefer new-folder input if visible, else dropdown
+    const newFolderWrap = document.getElementById('new-folder-wrap');
+    const newFolderInput = document.getElementById('upload-subfolder');
+    const subSelect = document.getElementById('upload-subfolder-select');
+    let subfolder = '';
+    if (newFolderWrap && newFolderWrap.style.display !== 'none' && newFolderInput && newFolderInput.value.trim()) {
+        subfolder = newFolderInput.value.trim().replace(/\//g, '-');
+    } else if (subSelect && subSelect.value) {
+        subfolder = subSelect.value;
+    }
     const basePath = subfolder ? `${selectedCat}/${subfolder}` : selectedCat;
 
     const btn = document.getElementById('upload-btn');
