@@ -696,3 +696,637 @@ function showToast(type, msg) {
     toast.classList.remove('hidden');
     lucide.createIcons();
 }
+/* =============================================
+   BILIBOT AI CHAT
+   ============================================= */
+
+let biliBotOpen = false;
+let biliBotHistory = [];
+let biliBotFiles = []; // stores {name, content} up to 3
+let biliBotMode = 'fast'; // 'fast' or 'deep' — default fast
+
+function setBiliBotMode(mode) {
+    biliBotMode = mode;
+    document.getElementById('mode-fast').classList.toggle('active', mode === 'fast');
+    document.getElementById('mode-deep').classList.toggle('active', mode === 'deep');
+    const label = mode === 'fast' ? '⚡ Fast mode — quick answers!' : '🧠 Deep mode — careful thinking!';
+    appendMessage('bot', label);
+}
+
+// ─── BILIBot: crawl archive for keyword matches ────────────
+async function biliBotSearchArchive(keywords, roots) {
+    if (!roots) roots = ['research', 'materials', 'prompts'];
+    const qs = (Array.isArray(keywords) ? keywords : [keywords]).map(k => k.toLowerCase().trim()).filter(Boolean);
+    const seen = new Set();
+    const results = [];
+    let crawlError = null;
+
+    await Promise.all(roots.map(async root => {
+        try {
+            const all = await crawlAll(root);
+            console.log('[BILIBot] crawled', root, '→', all.length, 'files');
+            all.forEach(f => {
+                const path = f.fullPath.toLowerCase();
+                if (qs.some(q => path.includes(q)) && !seen.has(f.fullPath)) {
+                    seen.add(f.fullPath);
+                    results.push(f);
+                }
+            });
+        } catch(e) {
+            crawlError = e;
+            console.error('[BILIBot] crawl error for', root, e);
+        }
+    }));
+
+    console.log('[BILIBot] search results:', results.length, 'for keywords:', qs);
+
+    // If nothing matched but we have keywords, try folder-level search
+    if (results.length === 0 && !crawlError) {
+        await Promise.all(roots.map(async root => {
+            try {
+                const items = await listPath(root);
+                if (!Array.isArray(items)) return;
+                items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder').forEach(folder => {
+                    const fname = folder.name.toLowerCase();
+                    if (qs.some(q => fname.includes(q))) {
+                        results.push({ name: folder.name, fullPath: root + '/' + folder.name + '/_folder_', size: 0 });
+                    }
+                });
+            } catch(e) {}
+        }));
+        console.log('[BILIBot] folder-level results:', results.length);
+    }
+
+    return results;
+}
+
+// ─── BILIBot nav card click handler (global scope) ────────
+window.biliBotNavGo = function(folder, title) {
+    smartNavigate(folder, title);
+    if (biliBotOpen) toggleBiliBot();
+};
+
+// ─── BILIBot: render nav result cards in chat ─────────────
+function appendNavResults(matches, queryLabel) {
+    const container = document.getElementById('bilibot-messages');
+    const wrap = document.createElement('div');
+    wrap.className = 'bilibot-msg bot';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'bilibot-msg-avatar';
+    avatar.innerHTML = `<img src="image/BILIBot.png" alt="BILIBot" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`;
+    wrap.appendChild(avatar);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bilibot-bubble';
+    bubble.style.cssText = 'max-width:100%;padding:10px 12px';
+
+    if (matches.length === 0) {
+        bubble.innerHTML = `I searched the archive for <strong>${queryLabel}</strong> but couldn't find anything. Try browsing manually using the menu above! 🔍`;
+    } else {
+        // Group by folder — treat _folder_ sentinel as folder-only result
+        const grouped = {};
+        matches.forEach(f => {
+            const isFolder = f.fullPath.endsWith('/_folder_');
+            const folder = isFolder
+                ? f.fullPath.replace('/_folder_', '')
+                : f.fullPath.split('/').slice(0, -1).join('/');
+            if (!grouped[folder]) grouped[folder] = { files: [], isFolder };
+            if (!isFolder) grouped[folder].files.push(f);
+        });
+
+        const total = Object.keys(grouped).length;
+        const header = document.createElement('div');
+        header.style.cssText = 'margin-bottom:10px;font-size:13px';
+        header.innerHTML = `Found <strong>${total}</strong> location${total>1?'s':''} for <strong>"${queryLabel}"</strong>:`;
+        bubble.appendChild(header);
+
+        const cardsWrap = document.createElement('div');
+        cardsWrap.className = 'bilibot-nav-cards';
+
+        Object.entries(grouped).slice(0, 5).forEach(([folder, data]) => {
+            const parts = folder.split('/');
+            const root = parts[0];
+            const folderName = parts[parts.length - 1];
+            const subFolder = parts.slice(1).join(' › ') || root;
+            const rootIcon = root === 'research' ? '📚' : root === 'materials' ? '📋' : '✏️';
+            const rootLabel = root === 'research' ? 'Research' : root === 'materials' ? 'Materials' : 'Prompts';
+            const fileCount = data.files.length;
+
+            const card = document.createElement('div');
+            card.className = 'bilibot-nav-card';
+            card.innerHTML = `
+                <div class="bilibot-nav-card-top">
+                    <span class="bilibot-nav-root">${rootIcon} ${rootLabel}</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+                <div class="bilibot-nav-folder">📁 ${subFolder}</div>
+                <div class="bilibot-nav-files">
+                    ${fileCount > 0
+                        ? data.files.slice(0,3).map(f => `<span>${f.fullPath.split('/').pop()}</span>`).join('') + (fileCount > 3 ? `<span>+${fileCount-3} more</span>` : '')
+                        : `<span>📂 Open folder</span>`
+                    }
+                </div>`;
+            card.addEventListener('click', () => window.biliBotNavGo(folder, folderName));
+            cardsWrap.appendChild(card);
+        });
+
+        bubble.appendChild(cardsWrap);
+
+        const hint = document.createElement('div');
+        hint.style.cssText = 'font-size:11px;color:#a78bfa;margin-top:8px';
+        hint.textContent = 'Tap a card to go there 👆';
+        bubble.appendChild(hint);
+    }
+
+    wrap.appendChild(bubble);
+    container.appendChild(wrap);
+    container.scrollTop = container.scrollHeight;
+}
+
+// ─── BILIBot: render clarification question with pick buttons ─
+function appendClarification(question, options) {
+    const container = document.getElementById('bilibot-messages');
+    const wrap = document.createElement('div');
+    wrap.className = 'bilibot-msg bot';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'bilibot-msg-avatar';
+    avatar.innerHTML = `<img src="image/BILIBot.png" alt="BILIBot" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`;
+    wrap.appendChild(avatar);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bilibot-bubble bilibot-clarify-bubble';
+
+    const q = document.createElement('div');
+    q.className = 'bilibot-clarify-question';
+    q.textContent = question;
+    bubble.appendChild(q);
+
+    const optWrap = document.createElement('div');
+    optWrap.className = 'bilibot-clarify-options';
+    options.forEach(function(opt) {
+        const btn = document.createElement('button');
+        btn.className = 'bilibot-clarify-btn';
+        btn.textContent = opt;
+        btn.addEventListener('click', function() {
+            // Disable all options in this set
+            optWrap.querySelectorAll('.bilibot-clarify-btn').forEach(function(b){ b.disabled = true; b.style.opacity = '0.5'; });
+            btn.style.opacity = '1';
+            btn.style.background = 'linear-gradient(135deg,#7c3aed,#a855f7)';
+            btn.style.color = 'white';
+            btn.style.borderColor = 'transparent';
+            // Send the chosen option as the next message
+            document.getElementById('bilibot-input').value = opt;
+            sendBiliBot();
+        });
+        optWrap.appendChild(btn);
+    });
+    bubble.appendChild(optWrap);
+    wrap.appendChild(bubble);
+    container.appendChild(wrap);
+    container.scrollTop = container.scrollHeight;
+}
+
+function toggleBiliBot() {
+    biliBotOpen = !biliBotOpen;
+    const panel = document.getElementById('bilibot-panel');
+    const fab = document.getElementById('bilibot-fab');
+    const notif = document.getElementById('bilibot-notif');
+
+    if (biliBotOpen) {
+        panel.classList.remove('hidden');
+        fab.classList.add('open');
+        notif.classList.add('hidden');
+        setTimeout(() => document.getElementById('bilibot-input').focus(), 200);
+    } else {
+        panel.classList.add('hidden');
+        fab.classList.remove('open');
+    }
+}
+
+function sendSuggestion(btn) {
+    const text = btn.textContent;
+    document.getElementById('bilibot-suggestions').style.display = 'none';
+    document.getElementById('bilibot-input').value = text;
+    sendBiliBot();
+}
+
+function appendMessage(role, text) {
+    const container = document.getElementById('bilibot-messages');
+    const div = document.createElement('div');
+    div.className = `bilibot-msg ${role}`;
+
+    if (role === 'bot') {
+        div.innerHTML = `
+            <div class="bilibot-msg-avatar">
+                <img src="image/BILIBot.png" alt="BILIBot" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">
+            </div>
+            <div class="bilibot-bubble">${text}</div>`;
+    } else {
+        div.innerHTML = `<div class="bilibot-bubble">${text}</div>`;
+    }
+
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    return div;
+}
+
+function showTyping() {
+    const container = document.getElementById('bilibot-messages');
+    const div = document.createElement('div');
+    div.className = 'bilibot-msg bot bilibot-typing';
+    div.id = 'bilibot-typing';
+    div.innerHTML = `
+        <div class="bilibot-msg-avatar">
+            <img src="image/BILIBot.png" alt="BILIBot" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">
+        </div>
+        <div class="bilibot-bubble">
+            <div class="bilibot-thinking-label">BILIBot is thinking…</div>
+            <div class="bilibot-thinking-bar-wrap">
+                <div class="bilibot-thinking-bar"></div>
+            </div>
+            <div class="bilibot-thinking-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function hideTyping() {
+    const el = document.getElementById('bilibot-typing');
+    if (el) el.remove();
+}
+
+function biliBotPickFiles() {
+    if (biliBotFiles.length >= 3) {
+        alert('Maximum 3 files allowed. Remove a file first.');
+        return;
+    }
+    document.getElementById('bilibot-file-input').click();
+}
+
+function biliBotHandleFiles(filesInput) {
+    Array.from(filesInput).forEach(file => {
+        if (biliBotFiles.length >= 3) return;
+        const isDocx = file.name.endsWith('.docx') ||
+            file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+        if (isDocx) {
+            // Use mammoth.js to extract text from DOCX
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const arrayBuffer = e.target.result;
+                    const result = await mammoth.extractRawText({ arrayBuffer });
+                    biliBotFiles.push({ name: file.name, content: result.value });
+                    renderBiliBotFilePills();
+                } catch (err) {
+                    alert('Could not read ' + file.name + '. Make sure it is a valid .docx file.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            // Plain text, CSV, HTML, MD etc.
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                biliBotFiles.push({ name: file.name, content: e.target.result });
+                renderBiliBotFilePills();
+            };
+            reader.readAsText(file);
+        }
+    });
+    document.getElementById('bilibot-file-input').value = '';
+}
+
+function removeBiliBotFile(idx) {
+    biliBotFiles.splice(idx, 1);
+    renderBiliBotFilePills();
+}
+
+function renderBiliBotFilePills() {
+    const wrap = document.getElementById('bilibot-file-pills');
+    const btn = document.getElementById('bilibot-attach-btn');
+    if (!biliBotFiles.length) {
+        wrap.innerHTML = '';
+        wrap.classList.add('hidden');
+        btn.style.opacity = '1';
+        return;
+    }
+    wrap.classList.remove('hidden');
+    btn.style.opacity = biliBotFiles.length >= 3 ? '0.4' : '1';
+    wrap.innerHTML = biliBotFiles.map((f, i) => `
+        <div class="bilibot-file-pill">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>${f.name.length > 18 ? f.name.slice(0,15) + '...' : f.name}</span>
+            <button onclick="removeBiliBotFile(${i})">×</button>
+        </div>`).join('');
+}
+
+async function sendBiliBot() {
+    const input = document.getElementById('bilibot-input');
+    const sendBtn = document.getElementById('bilibot-send-btn');
+    const text = input.value.trim();
+    if (!text && biliBotFiles.length === 0) return;
+
+    const userText = text || '(See attached files)';
+    input.value = '';
+    input.disabled = true;
+    sendBtn.disabled = true;
+
+    // Build display message with file names
+    let displayMsg = text ? text.replace(/</g,'&lt;') : '';
+    if (biliBotFiles.length > 0) {
+        const fileNames = biliBotFiles.map(f =>
+            `<span class="bilibot-file-pill-msg"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${f.name}</span>`
+        ).join('');
+        displayMsg += (displayMsg ? '<br>' : '') + fileNames;
+    }
+    appendMessage('user', displayMsg);
+
+    // Build content with file text appended
+    let fullContent = userText;
+    if (biliBotFiles.length > 0) {
+        const fileDump = biliBotFiles.map(f =>
+            `\n\n--- File: ${f.name} ---\n${f.content.slice(0, 3000)}${f.content.length > 3000 ? '\n[truncated...]' : ''}`
+        ).join('');
+        fullContent += fileDump;
+    }
+
+    biliBotHistory.push({ role: 'user', content: fullContent });
+
+    // Clear files after send
+    biliBotFiles = [];
+    renderBiliBotFilePills();
+
+    // ── Client-side vague detector (instant clarification) ──
+    const vaguePatterns = [
+        { pattern: /^help me in research$/i,    q: "What kind of research help do you need?",      opts: ["Find a research file","Help me write a research","Explain a research topic","Review my research"] },
+        { pattern: /^help me( with)? research$/i, q: "What kind of research help do you need?",    opts: ["Find a research file","Help me write a research","Explain a research topic","Review my research"] },
+        { pattern: /^(help me|i need help|help)$/i, q: "What can I help you with today?",           opts: ["Find a file in the archive","Help with research","Help with writing prompts","Study tips"] },
+        { pattern: /^(i need|show me|find) materials?$/i, q: "What subject are the materials for?", opts: ["Science","English","Math","Other subject"] },
+        { pattern: /^(i need|show me|find) prompts?$/i,   q: "What type of writing prompt?",        opts: ["Narrative","Persuasive","Descriptive","Expository"] },
+        { pattern: /^(i need help|help me) (study|studying)$/i, q: "What subject do you need help studying?", opts: ["Science","English","Math","Filipino"] },
+    ];
+
+    const vagueFull = [
+        "help me", "i need help", "help", "help me please",
+        "i need something", "find something", "show me something"
+    ];
+
+    const lowerUser = userText.toLowerCase().trim();
+    const vagueMatch = vaguePatterns.find(function(v){ return v.pattern.test(lowerUser); });
+    const isVague = vagueMatch || vagueFull.includes(lowerUser);
+
+    if (isVague) {
+        const q   = vagueMatch ? vagueMatch.q    : "What can I help you with today?";
+        const opts = vagueMatch ? vagueMatch.opts : ["Find a file in the archive","Help with research","Help with writing","Study tips"];
+        appendClarification(q, opts);
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+        return;
+    }
+    // ── End vague detector ────────────────────────────────
+
+    showTyping();
+
+    // ── Detect archive navigation intent ──────────────────
+    const lowerText = fullContent.toLowerCase();
+
+    // 1a. "What's available?" — show real examples from archive
+    const availablePatterns = [
+        { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}research/i,    root: 'research',  title: 'Research Studies',   icon: '📚' },
+        { regex: /what.{0,20}research.{0,25}(available|there|have|exist)/i,                        root: 'research',  title: 'Research Studies',   icon: '📚' },
+        { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}(material|module)/i, root: 'materials', title: 'Learning Materials', icon: '📋' },
+        { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}prompt/i,      root: 'prompts',   title: 'Writing Prompts',    icon: '✏️' },
+        { regex: /what.{0,20}(material|module).{0,25}(available|there|have)/i,                    root: 'materials', title: 'Learning Materials', icon: '📋' },
+        { regex: /what.{0,20}prompt.{0,25}(available|there|have)/i,                               root: 'prompts',   title: 'Writing Prompts',    icon: '✏️' },
+        // bare "what are available" / "what are the available" without category = default to research
+        { regex: /what.{0,10}are.{0,10}(the\s+)?available/i,                                      root: 'research',  title: 'Research Studies',   icon: '📚' },
+        { regex: /what.{0,10}(files?|docs?|documents?).{0,10}(are\s+)?(available|there)/i,        root: 'research',  title: 'Research Studies',   icon: '📚' },
+    ];
+
+    const availableMatch = availablePatterns.find(function(p) { return p.regex.test(lowerText); });
+
+    if (availableMatch) {
+        hideTyping();
+        appendMessage('bot', availableMatch.icon + ' Let me grab some examples from <strong>' + availableMatch.title + '</strong>…');
+        try {
+            const items = await listPath(availableMatch.root);
+            const folders = Array.isArray(items) ? items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder') : [];
+            const files   = Array.isArray(items) ? items.filter(i =>  i.id && i.name !== '.emptyFolderPlaceholder') : [];
+
+            // Build sample list — show up to 6 folders or files
+            const samples = folders.length > 0 ? folders : files;
+            const preview = samples.slice(0, 6);
+
+            const container2 = document.getElementById('bilibot-messages');
+            const wrap2 = document.createElement('div');
+            wrap2.className = 'bilibot-msg bot';
+
+            const av2 = document.createElement('div');
+            av2.className = 'bilibot-msg-avatar';
+            av2.innerHTML = '<img src="image/BILIBot.png" alt="BILIBot" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">';
+            wrap2.appendChild(av2);
+
+            const bub2 = document.createElement('div');
+            bub2.className = 'bilibot-bubble';
+            bub2.style.cssText = 'max-width:100%;padding:10px 14px';
+
+            if (preview.length === 0) {
+                bub2.innerHTML = 'The <strong>' + availableMatch.title + '</strong> archive appears to be empty right now. Check back later!';
+            } else {
+                const isFolder = folders.length > 0;
+                let html = 'Here are some ' + (isFolder ? 'folders' : 'files') + ' in <strong>' + availableMatch.title + '</strong>:<br><br>';
+                html += '<div class="bilibot-nav-cards">';
+                preview.forEach(function(item) {
+                    const navPath = availableMatch.root + '/' + item.name;
+                    const card = document.createElement('div'); // temp — build via string then attach listener
+                    html += '<div class="bilibot-sample-card" data-path="' + navPath + '" data-name="' + item.name + '">' +
+                        (isFolder ? '📁' : '📄') + ' ' + item.name +
+                        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-left:auto;flex-shrink:0"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>' +
+                    '</div>';
+                });
+                html += '</div>';
+                if (samples.length > 6) html += '<div style="font-size:11px;color:#a78bfa;margin-top:8px">+ ' + (samples.length - 6) + ' more — browse all in the menu</div>';
+                html += '<div style="font-size:11px;color:#a78bfa;margin-top:6px">Tap any to open it 👆</div>';
+                bub2.innerHTML = html;
+
+                // Attach click listeners after innerHTML
+                bub2.querySelectorAll('.bilibot-sample-card').forEach(function(card) {
+                    card.addEventListener('click', function() {
+                        window.biliBotNavGo(card.dataset.path, card.dataset.name);
+                    });
+                });
+            }
+
+            wrap2.appendChild(bub2);
+            container2.appendChild(wrap2);
+            container2.scrollTop = container2.scrollHeight;
+        } catch(e) {
+            appendMessage('bot', '⚠️ Could not load archive examples. Try browsing using the menu above!');
+        }
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+        return;
+    }
+
+    // 1b. Direct category routing — if user mentions only a category keyword, go straight there
+    const categoryRoutes = [
+        { patterns: ['research studies', 'research study', 'show research', 'open research', 'go to research', 'what research', 'research topics', 'research available', 'research folder'], root: 'research', title: 'Research Studies', icon: '📚' },
+        { patterns: ['learning material', 'learning module', 'show materials', 'open materials', 'go to materials', 'study material', 'modules available', 'show modules', 'materials available'], root: 'materials', title: 'Learning Materials', icon: '📋' },
+        { patterns: ['writing prompt', 'show prompts', 'open prompts', 'go to prompts', 'prompts available', 'writing tasks', 'essay prompt'], root: 'prompts', title: 'Writing Prompts', icon: '✏️' },
+    ];
+
+    const matchedRoute = categoryRoutes.find(function(r) {
+        return r.patterns.some(function(p) { return lowerText.includes(p); });
+    });
+
+    if (matchedRoute) {
+        hideTyping();
+        appendMessage('bot', matchedRoute.icon + ' Taking you to <strong>' + matchedRoute.title + '</strong>…');
+        setTimeout(function() {
+            window.biliBotNavGo(matchedRoute.root, matchedRoute.title);
+        }, 600);
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+        return;
+    }
+
+    // 2. Topic search — only trigger if there's an actual topic keyword beyond just category words
+    const navTriggers = ['find', 'search', 'look for', 'where is', 'show me', 'locate', 'navigate to',
+        'looking for', 'do you have', 'capstone', 'thesis', 'study about', 'module about',
+        'research about', 'materials about', 'prompts about', 'about'];
+    const isNavIntent = navTriggers.some(t => lowerText.includes(t));
+
+    // Determine which root to search based on context clues
+    let searchRoots = ['research', 'materials', 'prompts']; // default: all
+    if (/(research|capstone|thesis|study)/.test(lowerText)) searchRoots = ['research'];
+    else if (/(material|module|lesson|module)/.test(lowerText)) searchRoots = ['materials'];
+    else if (/(prompt|essay|writing task)/.test(lowerText)) searchRoots = ['prompts'];
+
+    if (isNavIntent) {
+        try {
+            const kwRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer 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' },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    max_tokens: 80,
+                    messages: [{
+                        role: 'user',
+                        content: 'Extract the specific topic the user wants to find in a school archive. Include scientific/alternate names (e.g. "bangus" → ["bangus","milkfish"]). Reply ONLY as a JSON array of strings, max 4 items. The topic must be a real subject — NOT generic words like "research", "materials", "file", "topic", "something", "available". If no specific topic exists, reply exactly: ["NONE"]. User message: "' + userText + '"'
+                    }]
+                })
+            });
+            const kwData = await kwRes.json();
+            let raw = (kwData.choices?.[0]?.message?.content || '').trim().replace(/```json|```/g, '').trim();
+            let keywords = [];
+            try { keywords = JSON.parse(raw); } catch(e) { keywords = [raw.replace(/[\[\]"']/g,'').split(',')[0].trim()]; }
+
+            // Strict filter — reject generic/category words and NONE
+            const rejectWords = ['none','research','materials','material','prompts','prompt','module','files','file','topic','topics','something','available','studies','study'];
+            keywords = keywords.filter(function(k) {
+                const kl = k.toLowerCase().trim();
+                return kl && kl !== 'none' && kl.length > 1 && !rejectWords.includes(kl);
+            });
+
+            if (keywords.length > 0) {
+                hideTyping();
+                const label = keywords[0];
+                appendMessage('bot', '🔍 Searching for <strong>"' + label + '"</strong>' + (keywords.length > 1 ? ' and related terms' : '') + '…');
+                const matches = await biliBotSearchArchive(keywords, searchRoots);
+                appendNavResults(matches, keywords.join(' / '));
+                input.disabled = false;
+                sendBtn.disabled = false;
+                input.focus();
+                return;
+            }
+        } catch(e) { /* fall through to normal AI reply */ }
+    }
+    // ── End nav intent ──────────────────────────────────────
+
+    const isFast = biliBotMode === 'fast';
+
+    const systemPrompt = `You are BILIBot, the friendly AI assistant for iBilib — the Digital Archive of Aringay National High School (NHS) in the Philippines.
+You help students and teachers with research studies, learning materials, and writing prompts. You can read uploaded files and answer questions about them.
+
+SPELLING & LANGUAGE RULE:
+- Users may type with typos, wrong spelling, or mixed Filipino/English (Taglish). Always try to understand what they mean.
+- Examples: "reserch" = research, "materyal" = material, "anong" = what is, "pwede" = can/may, "maghanap" = find/search, "capston" = capstone, "bangos" = bangus.
+- Never reject a message just because of spelling. Figure out the intent and respond helpfully.
+
+${isFast ? `MODE: FAST — Give a short, direct answer immediately. No long explanations. Max 2-3 sentences.` : `MODE: DEEP THINKING — Before answering, briefly analyze what the user is really asking (consider typos, implied meaning, context). Then give a thorough, helpful response. Structure your answer clearly.`}
+
+CLARIFICATION RULE:
+If the message is vague → respond ONLY with this JSON (no other text):
+{"clarify": true, "question": "Short question?", "options": ["Option A", "Option B", "Option C", "Option D"]}
+If specific → reply as plain text. NEVER mix text + JSON.
+
+Be warm and encouraging. You may use occasional emojis.`;
+
+    try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer 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'
+            },
+            body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                max_tokens: isFast ? 300 : 1000,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    ...biliBotHistory.slice(-6)
+                ]
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            const errMsg = data.error?.message || JSON.stringify(data);
+            hideTyping();
+            appendMessage('bot', '⚠️ API Error (' + response.status + '): ' + errMsg);
+            return;
+        }
+
+        const reply = data.choices?.[0]?.message?.content || "Sorry, I couldn't get a response. Please try again!";
+        hideTyping();
+        biliBotHistory.push({ role: 'assistant', content: reply });
+
+        // Check if the AI wants to clarify (handle stray text before JSON too)
+        const trimmed = reply.trim();
+        const jsonStart = trimmed.indexOf('{');
+        const jsonEnd = trimmed.lastIndexOf('}');
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+            try {
+                const parsed = JSON.parse(trimmed.slice(jsonStart, jsonEnd + 1));
+                if (parsed.clarify && parsed.question && Array.isArray(parsed.options)) {
+                    appendClarification(parsed.question, parsed.options);
+                    return;
+                }
+            } catch(e) { /* not JSON, fall through */ }
+        }
+
+        const formatted = reply
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+
+        appendMessage('bot', formatted);
+
+    } catch (err) {
+        hideTyping();
+        appendMessage('bot', '⚠️ Connection error: ' + err.message);
+    } finally {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+    }
+}
