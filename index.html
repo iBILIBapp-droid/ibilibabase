@@ -173,6 +173,53 @@
                     </div>
                 </div>
             </div>
+
+            <!-- CREDITS FOOTER -->
+            <footer class="site-credits">
+                <div class="credits-inner">
+                    <div class="credits-logo">
+                        <div class="credits-logo-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                            </svg>
+                        </div>
+                        <span>iBilib</span>
+                    </div>
+                    <p class="credits-tagline">Digital Archive of Aringay National High School</p>
+                    <div class="credits-divider"></div>
+                    <div class="credits-row">
+                        <div class="credits-block">
+                            <span class="credits-label">Developed by</span>
+                            <span class="credits-value">iBilib Dev Team</span>
+                        </div>
+                        <div class="credits-dot"></div>
+                        <div class="credits-block">
+                            <span class="credits-label">School</span>
+                            <span class="credits-value">Aringay NHS</span>
+                        </div>
+                        <div class="credits-dot"></div>
+                        <div class="credits-block">
+                            <span class="credits-label">AI Assistant</span>
+                            <span class="credits-value">BILIBot ✦ Powered by Groq</span>
+                        </div>
+                    </div>
+                    <div class="credits-divider"></div>
+                    <p class="credits-ai-label">Built with the help of AI</p>
+                    <div class="credits-ai-row">
+                        <div class="credits-ai-badge claude">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                            Claude <span>by Anthropic</span>
+                        </div>
+                        <div class="credits-ai-badge gemini">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            Gemini <span>by Google</span>
+                        </div>
+                    </div>
+                    <p class="credits-copy">© 2025 iBilib · All rights reserved · Built with 💜 for students and teachers</p>
+                </div>
+            </footer>
+
         </section>
 
         <!-- CATEGORY PAGE -->
@@ -362,11 +409,22 @@
                     </button>
                 </div>
             </div>
-            <div class="field-wrap">
-                <label>Subfolder <span class="label-hint">(optional — e.g. Grade-11)</span></label>
-                <div class="input-wrap">
-                    <i data-lucide="folder" class="input-icon"></i>
-                    <input type="text" id="upload-subfolder" placeholder="Leave blank for root category" autocomplete="off">
+            <div class="field-wrap" id="subfolder-wrap">
+                <label>Subfolder <span class="label-hint" id="subfolder-hint">Loading folders…</span></label>
+                <div class="subfolder-select-wrap">
+                    <div class="input-wrap" style="flex:1">
+                        <i data-lucide="folder" class="input-icon"></i>
+                        <select id="upload-subfolder-select" onchange="onSubfolderSelect(this)">
+                            <option value="">— Root (no subfolder) —</option>
+                        </select>
+                    </div>
+                    <button type="button" class="subfolder-new-btn" id="subfolder-new-btn" onclick="toggleNewFolder()" title="Create new subfolder">
+                        <i data-lucide="folder-plus"></i>
+                    </button>
+                </div>
+                <div class="input-wrap" id="new-folder-wrap" style="display:none;margin-top:8px">
+                    <i data-lucide="folder-plus" class="input-icon"></i>
+                    <input type="text" id="upload-subfolder" placeholder="Type new subfolder name…" autocomplete="off">
                 </div>
             </div>
             <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()"
