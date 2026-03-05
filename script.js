@@ -324,13 +324,7 @@ function handleBack(path) {
 }
 
 function openViewer(url) {
-    // Use native browser PDF rendering — shows ALL pages with proper zoom.
-    // #view=FitH fits width on desktop; page-width on mobile removes the zoom issue.
-    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-    const hash = isMobile
-        ? '#toolbar=0&view=FitH&zoom=page-width'
-        : '#toolbar=1&view=FitH';
-    document.getElementById('pdf-frame').src = url + hash;
+    document.getElementById('pdf-frame').src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
     showPage('viewer');
 }
 
@@ -551,7 +545,7 @@ function selectCat(btn) {
 
 async function loadSubfolders(cat) {
     const select = document.getElementById('upload-subfolder-select');
-    const hint = document.getElementById('subfolder-hint');
+    const hint   = document.getElementById('subfolder-hint');
     if (!select) return;
 
     // Animate: loading state
@@ -590,7 +584,7 @@ async function loadSubfolders(cat) {
                         subOpt.textContent = '  └ 📁 ' + f.name + ' › ' + sf.name;
                         select.appendChild(subOpt);
                     });
-                } catch (e) { }
+                } catch(e) {}
             }
             hint.textContent = '✦ ' + folders.length + ' folder' + (folders.length > 1 ? 's' : '') + ' found';
         }
@@ -602,7 +596,7 @@ async function loadSubfolders(cat) {
         hint.classList.add('pulse');
         setTimeout(() => hint.classList.remove('pulse'), 600);
 
-    } catch (e) {
+    } catch(e) {
         hint.textContent = '⚠️ Could not load folders';
         select.classList.remove('loading');
     }
@@ -621,8 +615,8 @@ function onSubfolderSelect(sel) {
 
 function toggleNewFolder() {
     const wrap = document.getElementById('new-folder-wrap');
-    const btn = document.getElementById('subfolder-new-btn');
-    const sel = document.getElementById('upload-subfolder-select');
+    const btn  = document.getElementById('subfolder-new-btn');
+    const sel  = document.getElementById('upload-subfolder-select');
     const isHidden = wrap.style.display === 'none';
     wrap.style.display = isHidden ? 'flex' : 'none';
     btn.classList.toggle('active', isHidden);
@@ -806,12 +800,6 @@ function showToast(type, msg) {
    BILIBOT AI CHAT
    ============================================= */
 
-// ── Groq config — update key here if it changes ────────────
-const GROQ_API_KEY = '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';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-// ──────────────────────────────────────────────────────────
-
 let biliBotOpen = false;
 let biliBotHistory = [];
 let biliBotFiles = []; // stores {name, content} up to 3
@@ -844,7 +832,7 @@ async function biliBotSearchArchive(keywords, roots) {
                     results.push(f);
                 }
             });
-        } catch (e) {
+        } catch(e) {
             crawlError = e;
             console.error('[BILIBot] crawl error for', root, e);
         }
@@ -864,7 +852,7 @@ async function biliBotSearchArchive(keywords, roots) {
                         results.push({ name: folder.name, fullPath: root + '/' + folder.name + '/_folder_', size: 0 });
                     }
                 });
-            } catch (e) { }
+            } catch(e) {}
         }));
         console.log('[BILIBot] folder-level results:', results.length);
     }
@@ -873,7 +861,7 @@ async function biliBotSearchArchive(keywords, roots) {
 }
 
 // ─── BILIBot nav card click handler (global scope) ────────
-window.biliBotNavGo = function (folder, title) {
+window.biliBotNavGo = function(folder, title) {
     smartNavigate(folder, title);
     if (biliBotOpen) toggleBiliBot();
 };
@@ -910,7 +898,7 @@ function appendNavResults(matches, queryLabel) {
         const total = Object.keys(grouped).length;
         const header = document.createElement('div');
         header.style.cssText = 'margin-bottom:10px;font-size:13px';
-        header.innerHTML = `Found <strong>${total}</strong> location${total > 1 ? 's' : ''} for <strong>"${queryLabel}"</strong>:`;
+        header.innerHTML = `Found <strong>${total}</strong> location${total>1?'s':''} for <strong>"${queryLabel}"</strong>:`;
         bubble.appendChild(header);
 
         const cardsWrap = document.createElement('div');
@@ -935,9 +923,9 @@ function appendNavResults(matches, queryLabel) {
                 <div class="bilibot-nav-folder">📁 ${subFolder}</div>
                 <div class="bilibot-nav-files">
                     ${fileCount > 0
-                    ? data.files.slice(0, 3).map(f => `<span>${f.fullPath.split('/').pop()}</span>`).join('') + (fileCount > 3 ? `<span>+${fileCount - 3} more</span>` : '')
-                    : `<span>📂 Open folder</span>`
-                }
+                        ? data.files.slice(0,3).map(f => `<span>${f.fullPath.split('/').pop()}</span>`).join('') + (fileCount > 3 ? `<span>+${fileCount-3} more</span>` : '')
+                        : `<span>📂 Open folder</span>`
+                    }
                 </div>`;
             card.addEventListener('click', () => window.biliBotNavGo(folder, folderName));
             cardsWrap.appendChild(card);
@@ -977,13 +965,13 @@ function appendClarification(question, options) {
 
     const optWrap = document.createElement('div');
     optWrap.className = 'bilibot-clarify-options';
-    options.forEach(function (opt) {
+    options.forEach(function(opt) {
         const btn = document.createElement('button');
         btn.className = 'bilibot-clarify-btn';
         btn.textContent = opt;
-        btn.addEventListener('click', function () {
+        btn.addEventListener('click', function() {
             // Disable all options in this set
-            optWrap.querySelectorAll('.bilibot-clarify-btn').forEach(function (b) { b.disabled = true; b.style.opacity = '0.5'; });
+            optWrap.querySelectorAll('.bilibot-clarify-btn').forEach(function(b){ b.disabled = true; b.style.opacity = '0.5'; });
             btn.style.opacity = '1';
             btn.style.background = 'linear-gradient(135deg,#7c3aed,#a855f7)';
             btn.style.color = 'white';
@@ -1133,7 +1121,7 @@ function renderBiliBotFilePills() {
     wrap.innerHTML = biliBotFiles.map((f, i) => `
         <div class="bilibot-file-pill">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span>${f.name.length > 18 ? f.name.slice(0, 15) + '...' : f.name}</span>
+            <span>${f.name.length > 18 ? f.name.slice(0,15) + '...' : f.name}</span>
             <button onclick="removeBiliBotFile(${i})">×</button>
         </div>`).join('');
 }
@@ -1150,7 +1138,7 @@ async function sendBiliBot() {
     sendBtn.disabled = true;
 
     // Build display message with file names
-    let displayMsg = text ? text.replace(/</g, '&lt;') : '';
+    let displayMsg = text ? text.replace(/</g,'&lt;') : '';
     if (biliBotFiles.length > 0) {
         const fileNames = biliBotFiles.map(f =>
             `<span class="bilibot-file-pill-msg"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${f.name}</span>`
@@ -1176,12 +1164,12 @@ async function sendBiliBot() {
 
     // ── Client-side vague detector (instant clarification) ──
     const vaguePatterns = [
-        { pattern: /^help me in research$/i, q: "What kind of research help do you need?", opts: ["Find a research file", "Help me write a research", "Explain a research topic", "Review my research"] },
-        { pattern: /^help me( with)? research$/i, q: "What kind of research help do you need?", opts: ["Find a research file", "Help me write a research", "Explain a research topic", "Review my research"] },
-        { pattern: /^(help me|i need help|help)$/i, q: "What can I help you with today?", opts: ["Find a file in the archive", "Help with research", "Help with writing prompts", "Study tips"] },
-        { pattern: /^(i need|show me|find) materials?$/i, q: "What subject are the materials for?", opts: ["Science", "English", "Math", "Other subject"] },
-        { pattern: /^(i need|show me|find) prompts?$/i, q: "What type of writing prompt?", opts: ["Narrative", "Persuasive", "Descriptive", "Expository"] },
-        { pattern: /^(i need help|help me) (study|studying)$/i, q: "What subject do you need help studying?", opts: ["Science", "English", "Math", "Filipino"] },
+        { pattern: /^help me in research$/i,    q: "What kind of research help do you need?",      opts: ["Find a research file","Help me write a research","Explain a research topic","Review my research"] },
+        { pattern: /^help me( with)? research$/i, q: "What kind of research help do you need?",    opts: ["Find a research file","Help me write a research","Explain a research topic","Review my research"] },
+        { pattern: /^(help me|i need help|help)$/i, q: "What can I help you with today?",           opts: ["Find a file in the archive","Help with research","Help with writing prompts","Study tips"] },
+        { pattern: /^(i need|show me|find) materials?$/i, q: "What subject are the materials for?", opts: ["Science","English","Math","Other subject"] },
+        { pattern: /^(i need|show me|find) prompts?$/i,   q: "What type of writing prompt?",        opts: ["Narrative","Persuasive","Descriptive","Expository"] },
+        { pattern: /^(i need help|help me) (study|studying)$/i, q: "What subject do you need help studying?", opts: ["Science","English","Math","Filipino"] },
     ];
 
     const vagueFull = [
@@ -1190,12 +1178,12 @@ async function sendBiliBot() {
     ];
 
     const lowerUser = userText.toLowerCase().trim();
-    const vagueMatch = vaguePatterns.find(function (v) { return v.pattern.test(lowerUser); });
+    const vagueMatch = vaguePatterns.find(function(v){ return v.pattern.test(lowerUser); });
     const isVague = vagueMatch || vagueFull.includes(lowerUser);
 
     if (isVague) {
-        const q = vagueMatch ? vagueMatch.q : "What can I help you with today?";
-        const opts = vagueMatch ? vagueMatch.opts : ["Find a file in the archive", "Help with research", "Help with writing", "Study tips"];
+        const q   = vagueMatch ? vagueMatch.q    : "What can I help you with today?";
+        const opts = vagueMatch ? vagueMatch.opts : ["Find a file in the archive","Help with research","Help with writing","Study tips"];
         appendClarification(q, opts);
         input.disabled = false;
         sendBtn.disabled = false;
@@ -1211,18 +1199,18 @@ async function sendBiliBot() {
 
     // 1a. "What's available?" — show real examples from archive
     const availablePatterns = [
-        { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}research/i, root: 'research', title: 'Research Studies', icon: '📚' },
-        { regex: /what.{0,20}research.{0,25}(available|there|have|exist)/i, root: 'research', title: 'Research Studies', icon: '📚' },
+        { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}research/i,    root: 'research',  title: 'Research Studies',   icon: '📚' },
+        { regex: /what.{0,20}research.{0,25}(available|there|have|exist)/i,                        root: 'research',  title: 'Research Studies',   icon: '📚' },
         { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}(material|module)/i, root: 'materials', title: 'Learning Materials', icon: '📋' },
-        { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}prompt/i, root: 'prompts', title: 'Writing Prompts', icon: '✏️' },
-        { regex: /what.{0,20}(material|module).{0,25}(available|there|have)/i, root: 'materials', title: 'Learning Materials', icon: '📋' },
-        { regex: /what.{0,20}prompt.{0,25}(available|there|have)/i, root: 'prompts', title: 'Writing Prompts', icon: '✏️' },
+        { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}prompt/i,      root: 'prompts',   title: 'Writing Prompts',    icon: '✏️' },
+        { regex: /what.{0,20}(material|module).{0,25}(available|there|have)/i,                    root: 'materials', title: 'Learning Materials', icon: '📋' },
+        { regex: /what.{0,20}prompt.{0,25}(available|there|have)/i,                               root: 'prompts',   title: 'Writing Prompts',    icon: '✏️' },
         // bare "what are available" / "what are the available" without category = default to research
-        { regex: /what.{0,10}are.{0,10}(the\s+)?available/i, root: 'research', title: 'Research Studies', icon: '📚' },
-        { regex: /what.{0,10}(files?|docs?|documents?).{0,10}(are\s+)?(available|there)/i, root: 'research', title: 'Research Studies', icon: '📚' },
+        { regex: /what.{0,10}are.{0,10}(the\s+)?available/i,                                      root: 'research',  title: 'Research Studies',   icon: '📚' },
+        { regex: /what.{0,10}(files?|docs?|documents?).{0,10}(are\s+)?(available|there)/i,        root: 'research',  title: 'Research Studies',   icon: '📚' },
     ];
 
-    const availableMatch = availablePatterns.find(function (p) { return p.regex.test(lowerText); });
+    const availableMatch = availablePatterns.find(function(p) { return p.regex.test(lowerText); });
 
     if (availableMatch) {
         hideTyping();
@@ -1230,7 +1218,7 @@ async function sendBiliBot() {
         try {
             const items = await listPath(availableMatch.root);
             const folders = Array.isArray(items) ? items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder') : [];
-            const files = Array.isArray(items) ? items.filter(i => i.id && i.name !== '.emptyFolderPlaceholder') : [];
+            const files   = Array.isArray(items) ? items.filter(i =>  i.id && i.name !== '.emptyFolderPlaceholder') : [];
 
             // Build sample list — show up to 6 folders or files
             const samples = folders.length > 0 ? folders : files;
@@ -1255,13 +1243,13 @@ async function sendBiliBot() {
                 const isFolder = folders.length > 0;
                 let html = 'Here are some ' + (isFolder ? 'folders' : 'files') + ' in <strong>' + availableMatch.title + '</strong>:<br><br>';
                 html += '<div class="bilibot-nav-cards">';
-                preview.forEach(function (item) {
+                preview.forEach(function(item) {
                     const navPath = availableMatch.root + '/' + item.name;
                     const card = document.createElement('div'); // temp — build via string then attach listener
                     html += '<div class="bilibot-sample-card" data-path="' + navPath + '" data-name="' + item.name + '">' +
                         (isFolder ? '📁' : '📄') + ' ' + item.name +
                         '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-left:auto;flex-shrink:0"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>' +
-                        '</div>';
+                    '</div>';
                 });
                 html += '</div>';
                 if (samples.length > 6) html += '<div style="font-size:11px;color:#a78bfa;margin-top:8px">+ ' + (samples.length - 6) + ' more — browse all in the menu</div>';
@@ -1269,8 +1257,8 @@ async function sendBiliBot() {
                 bub2.innerHTML = html;
 
                 // Attach click listeners after innerHTML
-                bub2.querySelectorAll('.bilibot-sample-card').forEach(function (card) {
-                    card.addEventListener('click', function () {
+                bub2.querySelectorAll('.bilibot-sample-card').forEach(function(card) {
+                    card.addEventListener('click', function() {
                         window.biliBotNavGo(card.dataset.path, card.dataset.name);
                     });
                 });
@@ -1279,7 +1267,7 @@ async function sendBiliBot() {
             wrap2.appendChild(bub2);
             container2.appendChild(wrap2);
             container2.scrollTop = container2.scrollHeight;
-        } catch (e) {
+        } catch(e) {
             appendMessage('bot', '⚠️ Could not load archive examples. Try browsing using the menu above!');
         }
         input.disabled = false;
@@ -1295,14 +1283,14 @@ async function sendBiliBot() {
         { patterns: ['writing prompt', 'show prompts', 'open prompts', 'go to prompts', 'prompts available', 'writing tasks', 'essay prompt'], root: 'prompts', title: 'Writing Prompts', icon: '✏️' },
     ];
 
-    const matchedRoute = categoryRoutes.find(function (r) {
-        return r.patterns.some(function (p) { return lowerText.includes(p); });
+    const matchedRoute = categoryRoutes.find(function(r) {
+        return r.patterns.some(function(p) { return lowerText.includes(p); });
     });
 
     if (matchedRoute) {
         hideTyping();
         appendMessage('bot', matchedRoute.icon + ' Taking you to <strong>' + matchedRoute.title + '</strong>…');
-        setTimeout(function () {
+        setTimeout(function() {
             window.biliBotNavGo(matchedRoute.root, matchedRoute.title);
         }, 600);
         input.disabled = false;
@@ -1325,11 +1313,11 @@ async function sendBiliBot() {
 
     if (isNavIntent) {
         try {
-            const kwRes = await fetch(GROQ_URL, {
+            const kwRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer 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' },
                 body: JSON.stringify({
-                    model: GROQ_MODEL,
+                    model: 'llama-3.3-70b-versatile',
                     max_tokens: 80,
                     messages: [{
                         role: 'user',
@@ -1340,11 +1328,11 @@ async function sendBiliBot() {
             const kwData = await kwRes.json();
             let raw = (kwData.choices?.[0]?.message?.content || '').trim().replace(/```json|```/g, '').trim();
             let keywords = [];
-            try { keywords = JSON.parse(raw); } catch (e) { keywords = [raw.replace(/[\[\]"']/g, '').split(',')[0].trim()]; }
+            try { keywords = JSON.parse(raw); } catch(e) { keywords = [raw.replace(/[\[\]"']/g,'').split(',')[0].trim()]; }
 
             // Strict filter — reject generic/category words and NONE
-            const rejectWords = ['none', 'research', 'materials', 'material', 'prompts', 'prompt', 'module', 'files', 'file', 'topic', 'topics', 'something', 'available', 'studies', 'study'];
-            keywords = keywords.filter(function (k) {
+            const rejectWords = ['none','research','materials','material','prompts','prompt','module','files','file','topic','topics','something','available','studies','study'];
+            keywords = keywords.filter(function(k) {
                 const kl = k.toLowerCase().trim();
                 return kl && kl !== 'none' && kl.length > 1 && !rejectWords.includes(kl);
             });
@@ -1360,7 +1348,7 @@ async function sendBiliBot() {
                 input.focus();
                 return;
             }
-        } catch (e) { /* fall through to normal AI reply */ }
+        } catch(e) { /* fall through to normal AI reply */ }
     }
     // ── End nav intent ──────────────────────────────────────
 
@@ -1384,14 +1372,14 @@ If specific → reply as plain text. NEVER mix text + JSON.
 Be warm and encouraging. You may use occasional emojis.`;
 
     try {
-        const response = await fetch(GROQ_URL, {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + GROQ_API_KEY
+                'Authorization': 'Bearer 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'
             },
             body: JSON.stringify({
-                model: GROQ_MODEL,
+                model: 'llama-3.3-70b-versatile',
                 max_tokens: isFast ? 300 : 1000,
                 messages: [
                     { role: 'system', content: systemPrompt },
@@ -1424,7 +1412,7 @@ Be warm and encouraging. You may use occasional emojis.`;
                     appendClarification(parsed.question, parsed.options);
                     return;
                 }
-            } catch (e) { /* not JSON, fall through */ }
+            } catch(e) { /* not JSON, fall through */ }
         }
 
         const formatted = reply
