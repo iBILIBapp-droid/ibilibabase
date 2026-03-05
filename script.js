@@ -1,5 +1,21 @@
-const SB_URL = "https://alpvtuximvsrsopsxghq.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscHZ0dXhpbXZzcnNvcHN4Z2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMzUyNTMsImV4cCI6MjA4NzcxMTI1M30.XvAkTQo0QssHGFO7EWFFu7-wLMwP2t9WRS6fb9Jo37o";
+// ─── Organization 1 — PORTFOLIO ──────────────────────────────
+const SB_URL_PORTFOLIO = "https://gujzpqpcobwdsigxjcem.supabase.co";
+const SB_KEY_PORTFOLIO = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1anpwcXBjb2J3ZHNpZ3hqY2VtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNjMyMzMsImV4cCI6MjA4NzkzOTIzM30.3W1BtfXpXRcikt1bfOGwdFBQEVtT3xhrGbub-PyGQ6o";
+
+// ─── Organization 2 — iBILIB ─────────────────────────────────
+const SB_URL_IBILIB = "https://utpuzryjocromtvstxeb.supabase.co";
+const SB_KEY_IBILIB = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0cHV6cnlqb2Nyb210dnN0eGViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MTg1MTYsImV4cCI6MjA4ODI5NDUxNn0.G_km1SkeuexDBmfx0oC1l0dFLM95CCQrfvJrdRxYXkk";
+
+// ─── Aliases used by admin upload panel (targets PORTFOLIO) ───
+// Change to SB_URL_IBILIB / SB_KEY_IBILIB to upload to iBilib instead.
+const SB_URL = SB_URL_PORTFOLIO;
+const SB_KEY = SB_KEY_PORTFOLIO;
+
+// ─── Backwards-compat aliases (used internally) ───────────────
+const SB_URL_ORG1 = SB_URL_PORTFOLIO;
+const SB_KEY_ORG1 = SB_KEY_PORTFOLIO;
+const SB_URL_ORG2 = SB_URL_IBILIB;
+const SB_KEY_ORG2 = SB_KEY_IBILIB;
 
 // ─── State ───────────────────────────────────────────────
 let currentPage = 'home';   // 'home' | 'category' | 'browser'
@@ -38,37 +54,50 @@ function toggleMobileMenu() {
 }
 
 // ─── Supabase list helper ─────────────────────────────────
-async function listPath(prefix) {
-    const res = await fetch(`${SB_URL}/storage/v1/object/list/archives`, {
+// url and key default to PORTFOLIO for backwards-compatibility.
+async function listPath(prefix, url = SB_URL_ORG1, key = SB_KEY_ORG1) {
+    const orgLabel = url.includes('gujzpq') ? 'PORTFOLIO' : 'iBILIB';
+    const res = await fetch(`${url}/storage/v1/object/list/archives`, {
         method: 'POST',
         headers: {
-            "apikey": SB_KEY,
-            "Authorization": `Bearer ${SB_KEY}`,
+            "apikey": key,
+            "Authorization": `Bearer ${key}`,
             "Content-Type": "application/json"
         },
         body: JSON.stringify({ prefix, limit: 200 })
     });
-    return res.json();
+    const data = await res.json();
+    if (!res.ok) {
+        console.error(`[listPath] ${orgLabel} ERROR ${res.status} for prefix "${prefix}":`, data);
+        return [];
+    }
+    if (!Array.isArray(data)) {
+        console.warn(`[listPath] ${orgLabel} unexpected response for prefix "${prefix}":`, data);
+        return [];
+    }
+    console.log(`[listPath] ${orgLabel} "${prefix}" -> ${data.length} items`);
+    return data;
 }
 
 // ─── Recursive file crawler (for global search) ────────────
-async function crawlAll(prefix, results = []) {
-    const items = await listPath(prefix);
-    if (!Array.isArray(items)) return results;
-
+// orgUrl / orgKey allow targeting either organization.
+async function crawlAll(prefix, results = [], orgUrl = SB_URL_ORG1, orgKey = SB_KEY_ORG1) {
+    const items = await listPath(prefix, orgUrl, orgKey);
+    // listPath now always returns an array (empty on error), so no silent bail-out
     const folders = items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder');
-    const files = items.filter(i => i.id && i.name !== '.emptyFolderPlaceholder');
+    const files   = items.filter(i =>  i.id && i.name !== '.emptyFolderPlaceholder');
 
     for (const f of files) {
-        results.push({ name: f.name, fullPath: `${prefix}/${f.name}`, size: f.metadata?.size });
+        results.push({ name: f.name, fullPath: `${prefix}/${f.name}`, size: f.metadata?.size, orgUrl, orgKey });
     }
     // Crawl subfolders in parallel
-    await Promise.all(folders.map(f => crawlAll(`${prefix}/${f.name}`, results)));
+    await Promise.all(folders.map(f => crawlAll(`${prefix}/${f.name}`, results, orgUrl, orgKey)));
     return results;
 }
 
 // ─── Navigate into a folder ───────────────────────────────
-async function smartNavigate(path, title) {
+// orgUrl / orgKey default to Org 1; pass Org 2 constants to target the second project.
+async function smartNavigate(path, title, orgUrl = SB_URL_ORG1, orgKey = SB_KEY_ORG1) {
     const container = document.getElementById('category-container');
     const browserContainer = document.getElementById('browser-container');
 
@@ -93,7 +122,7 @@ async function smartNavigate(path, title) {
     lucide.createIcons();
 
     try {
-        const items = await listPath(path);
+        const items = await listPath(path, orgUrl, orgKey);
         const folders = items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder');
         const files = items.filter(i => i.id && i.name !== '.emptyFolderPlaceholder');
 
@@ -103,24 +132,26 @@ async function smartNavigate(path, title) {
                 const div = document.createElement('div');
                 div.className = "liquid-card animate-tile";
                 div.style.animationDelay = `${i * 0.08}s`;
-                div.onclick = () => smartNavigate(`${path}/${f.name}`, f.name);
+                div.onclick = () => smartNavigate(`${path}/${f.name}`, f.name, orgUrl, orgKey);
                 div.innerHTML = `
                     <div class="card-icon-wrap"><i data-lucide="folder"></i></div>
                     <div class="card-inner"><h3>${f.name}</h3><p>Folder</p></div>
                     <i data-lucide="arrow-right" class="card-arrow purple-text"></i>`;
                 container.appendChild(div);
             });
-            document.getElementById('category-back-btn').onclick = () => handleBack(path);
+            document.getElementById('category-back-btn').onclick = () => handleBack(path, orgUrl, orgKey);
         } else {
             currentFiles = files.map(f => ({
                 name: f.name,
                 fullPath: `${path}/${f.name}`,
-                size: f.metadata?.size
+                size: f.metadata?.size,
+                orgUrl,
+                orgKey
             }));
             showPage('browser');
             document.getElementById('browser-title').innerText = title;
             renderFileObjects(currentFiles, browserContainer);
-            document.getElementById('browser-back-btn').onclick = () => handleBack(path);
+            document.getElementById('browser-back-btn').onclick = () => handleBack(path, orgUrl, orgKey);
         }
         lucide.createIcons();
     } catch (e) {
@@ -144,7 +175,9 @@ function renderFileObjects(files, container, isSearch = false) {
         return;
     }
     files.forEach((f, i) => {
-        const baseUrl = `${SB_URL}/storage/v1/object/public/archives/${f.fullPath}`;
+        // Use the file's own org URL if available, fall back to default Org 1
+        const fileOrgUrl = f.orgUrl || SB_URL_ORG1;
+        const baseUrl = `${fileOrgUrl}/storage/v1/object/public/archives/${f.fullPath}`;
 
         const div = document.createElement('div');
         div.className = "liquid-card animate-tile";
@@ -208,7 +241,7 @@ function handleSearch(val) {
     }, 350);
 }
 
-// Search across ALL three root folders
+// Search across ALL three root folders from BOTH organizations
 async function runGlobalSearch(q) {
     const container = document.getElementById('browser-container');
 
@@ -237,20 +270,26 @@ async function runGlobalSearch(q) {
     document.getElementById('browser-back-btn').onclick = () => showPage('home');
 
     try {
-        // Crawl all three root categories in parallel
-        const [resFiles, matFiles, proFiles] = await Promise.all([
-            crawlAll('research'),
-            crawlAll('materials'),
-            crawlAll('prompts')
+        // Crawl all three root categories across both organizations in parallel
+        const [
+            res1Files, mat1Files, pro1Files,
+            res2Files, mat2Files, pro2Files
+        ] = await Promise.all([
+            crawlAll('research', [], SB_URL_ORG1, SB_KEY_ORG1),
+            crawlAll('materials', [], SB_URL_ORG1, SB_KEY_ORG1),
+            crawlAll('prompts',   [], SB_URL_ORG1, SB_KEY_ORG1),
+            crawlAll('research', [], SB_URL_ORG2, SB_KEY_ORG2),
+            crawlAll('materials', [], SB_URL_ORG2, SB_KEY_ORG2),
+            crawlAll('prompts',   [], SB_URL_ORG2, SB_KEY_ORG2),
         ]);
 
-        const all = [...resFiles, ...matFiles, ...proFiles];
+        const all = [...res1Files, ...mat1Files, ...pro1Files, ...res2Files, ...mat2Files, ...pro2Files];
         const matches = all.filter(f => f.name.toLowerCase().replace(/_/g, ' ').includes(q));
 
         document.getElementById('browser-title').innerText =
             matches.length ? `"${q}" — ${matches.length} result${matches.length > 1 ? 's' : ''}` : `No results for "${q}"`;
 
-        renderFileObjects(matches, container);
+        renderFileObjects(matches, container, true);
     } catch (e) {
         container.innerHTML = `<div class="liquid-card" style="opacity:1">
             <div class="card-icon-wrap"><i data-lucide="wifi-off"></i></div>
@@ -300,13 +339,18 @@ async function runScopedSearch(q, root) {
     document.getElementById('browser-back-btn').onclick = () => showPage('home');
 
     try {
-        const all = await crawlAll(root);
+        // Search the scoped root across both organizations
+        const [org1Files, org2Files] = await Promise.all([
+            crawlAll(root, [], SB_URL_ORG1, SB_KEY_ORG1),
+            crawlAll(root, [], SB_URL_ORG2, SB_KEY_ORG2),
+        ]);
+        const all = [...org1Files, ...org2Files];
         const matches = all.filter(f => f.name.toLowerCase().replace(/_/g, ' ').includes(q));
         document.getElementById('browser-title').innerText =
             matches.length
                 ? `"${q}" in ${rootLabels[root]} — ${matches.length} result${matches.length > 1 ? 's' : ''}`
                 : `No results for "${q}"`;
-        renderFileObjects(matches, container);
+        renderFileObjects(matches, container, true);
     } catch (e) {
         container.innerHTML = `<div class="liquid-card" style="opacity:1">
             <div class="card-icon-wrap"><i data-lucide="wifi-off"></i></div>
@@ -317,10 +361,10 @@ async function runScopedSearch(q, root) {
 }
 
 // ─── Misc helpers ──────────────────────────────────────────
-function handleBack(path) {
+function handleBack(path, orgUrl = SB_URL_ORG1, orgKey = SB_KEY_ORG1) {
     const parts = path.split('/');
     if (parts.length <= 1) showPage('home');
-    else { parts.pop(); smartNavigate(parts.join('/'), parts[parts.length - 1] || 'Back'); }
+    else { parts.pop(); smartNavigate(parts.join('/'), parts[parts.length - 1] || 'Back', orgUrl, orgKey); }
 }
 
 function openViewer(url) {
@@ -362,9 +406,111 @@ function formatSize(bytes) {
     return (bytes / 1048576).toFixed(1) + ' MB';
 }
 
-function loadResearch() { smartNavigate('research', 'Research Studies'); }
-function loadMaterials() { smartNavigate('materials', 'Learning Materials'); }
-function loadPrompts() { smartNavigate('prompts', 'Writing Prompts'); }
+// ─── Load a root category from BOTH orgs and merge into one view ─────────────
+async function loadCategory(root, title) {
+    const container = document.getElementById('category-container');
+    currentRootScope = root;
+
+    // Show skeleton
+    let skeletonHTML = '';
+    for (let i = 0; i < 6; i++) {
+        skeletonHTML += `<div class="liquid-card skeleton-card animate-pulse" style="opacity:1; animation-delay: ${i * 0.1}s">
+            <div class="card-icon-wrap"></div>
+            <div class="card-inner">
+                <div class="skeleton-line skeleton-title"></div>
+                <div class="skeleton-line skeleton-desc"></div>
+            </div>
+            <div class="skeleton-action"></div>
+        </div>`;
+    }
+    container.innerHTML = skeletonHTML;
+    showPage('category');
+    document.getElementById('category-page-title').innerText = title;
+    document.getElementById('category-back-btn').onclick = () => showPage('home');
+    lucide.createIcons();
+
+    const orgs = [
+        { url: SB_URL_PORTFOLIO, key: SB_KEY_PORTFOLIO, label: 'PORTFOLIO' },
+        { url: SB_URL_IBILIB,    key: SB_KEY_IBILIB,    label: 'iBILIB' },
+    ];
+
+    try {
+        // Fetch top-level folders from both orgs in parallel
+        const [items1, items2] = await Promise.all(
+            orgs.map(org => listPath(root, org.url, org.key))
+        );
+
+        // Tag each folder with its org so we can pass credentials when navigating into it
+        const folders1 = items1
+            .filter(i => !i.id && i.name !== '.emptyFolderPlaceholder')
+            .map(i => ({ ...i, orgUrl: orgs[0].url, orgKey: orgs[0].key }));
+        const folders2 = items2
+            .filter(i => !i.id && i.name !== '.emptyFolderPlaceholder')
+            .map(i => ({ ...i, orgUrl: orgs[1].url, orgKey: orgs[1].key }));
+
+        // Merge: prefer unique names; if same name exists in both, show both tagged by org
+        const merged = [];
+        const seen = {};
+        [...folders1, ...folders2].forEach(f => {
+            const key = f.name + '::' + f.orgUrl;
+            if (!seen[key]) { seen[key] = true; merged.push(f); }
+        });
+
+        // Also collect root-level files from both orgs
+        const files1 = items1.filter(i => i.id && i.name !== '.emptyFolderPlaceholder')
+            .map(i => ({ name: i.name, fullPath: `${root}/${i.name}`, size: i.metadata?.size, orgUrl: orgs[0].url, orgKey: orgs[0].key }));
+        const files2 = items2.filter(i => i.id && i.name !== '.emptyFolderPlaceholder')
+            .map(i => ({ name: i.name, fullPath: `${root}/${i.name}`, size: i.metadata?.size, orgUrl: orgs[1].url, orgKey: orgs[1].key }));
+
+        container.innerHTML = '';
+
+        if (merged.length > 0) {
+            merged.forEach((f, i) => {
+                const orgTag = merged.filter(x => x.name === f.name).length > 1
+                    ? (f.orgUrl === SB_URL_PORTFOLIO ? ' <span style="font-size:10px;color:#a78bfa">[Portfolio]</span>' : ' <span style="font-size:10px;color:#34d399">[iBilib]</span>')
+                    : '';
+                const div = document.createElement('div');
+                div.className = 'liquid-card animate-tile';
+                div.style.animationDelay = `${i * 0.08}s`;
+                div.onclick = () => smartNavigate(`${root}/${f.name}`, f.name, f.orgUrl, f.orgKey);
+                div.innerHTML = `
+                    <div class="card-icon-wrap"><i data-lucide="folder"></i></div>
+                    <div class="card-inner"><h3>${f.name}${orgTag}</h3><p>Folder</p></div>
+                    <i data-lucide="arrow-right" class="card-arrow purple-text"></i>`;
+                container.appendChild(div);
+            });
+        }
+
+        // If only files exist at root level (no subfolders), show them in browser
+        if (merged.length === 0) {
+            const allFiles = [...files1, ...files2];
+            if (allFiles.length > 0) {
+                currentFiles = allFiles;
+                showPage('browser');
+                document.getElementById('browser-title').innerText = title;
+                renderFileObjects(currentFiles, document.getElementById('browser-container'));
+                document.getElementById('browser-back-btn').onclick = () => showPage('home');
+            } else {
+                container.innerHTML = `<div class="liquid-card" style="opacity:1">
+                    <div class="card-icon-wrap"><i data-lucide="inbox"></i></div>
+                    <div class="card-inner"><h3>Empty</h3><p>No folders or files found in either archive</p></div>
+                </div>`;
+            }
+        }
+
+        lucide.createIcons();
+    } catch (e) {
+        container.innerHTML = `<div class="liquid-card" style="opacity:1">
+            <div class="card-icon-wrap"><i data-lucide="wifi-off"></i></div>
+            <div class="card-inner"><h3>Network Error</h3><p>Could not reach archive</p></div>
+        </div>`;
+        lucide.createIcons();
+    }
+}
+
+function loadResearch()  { loadCategory('research',  'Research Studies'); }
+function loadMaterials() { loadCategory('materials', 'Learning Materials'); }
+function loadPrompts()   { loadCategory('prompts',   'Writing Prompts'); }
 
 // ─── Theme toggle ──────────────────────────────
 function toggleTheme() {
@@ -822,6 +968,7 @@ function setBiliBotMode(mode) {
 }
 
 // ─── BILIBot: crawl archive for keyword matches ────────────
+// Searches across both Org 1 and Org 2 and merges the results.
 async function biliBotSearchArchive(keywords, roots) {
     if (!roots) roots = ['research', 'materials', 'prompts'];
     const qs = (Array.isArray(keywords) ? keywords : [keywords]).map(k => k.toLowerCase().trim()).filter(Boolean);
@@ -829,39 +976,53 @@ async function biliBotSearchArchive(keywords, roots) {
     const results = [];
     let crawlError = null;
 
-    await Promise.all(roots.map(async root => {
-        try {
-            const all = await crawlAll(root);
-            console.log('[BILIBot] crawled', root, '→', all.length, 'files');
-            all.forEach(f => {
-                const path = f.fullPath.toLowerCase();
-                if (qs.some(q => path.includes(q)) && !seen.has(f.fullPath)) {
-                    seen.add(f.fullPath);
-                    results.push(f);
-                }
-            });
-        } catch (e) {
-            crawlError = e;
-            console.error('[BILIBot] crawl error for', root, e);
-        }
-    }));
+    // Build crawl tasks for both orgs
+    const orgs = [
+        { url: SB_URL_ORG1, key: SB_KEY_ORG1 },
+        { url: SB_URL_ORG2, key: SB_KEY_ORG2 },
+    ];
+
+    await Promise.all(orgs.flatMap(org =>
+        roots.map(async root => {
+            try {
+                const all = await crawlAll(root, [], org.url, org.key);
+                console.log('[BILIBot] crawled', root, '(org:', org.url.split('.')[0].split('//')[1], ') →', all.length, 'files');
+                all.forEach(f => {
+                    const path = f.fullPath.toLowerCase();
+                    // Use orgUrl as part of uniqueness key so same-path files from different orgs both appear
+                    const uniqueKey = `${org.url}::${f.fullPath}`;
+                    if (qs.some(q => path.includes(q)) && !seen.has(uniqueKey)) {
+                        seen.add(uniqueKey);
+                        results.push({ ...f, orgUrl: org.url, orgKey: org.key });
+                    }
+                });
+            } catch (e) {
+                crawlError = e;
+                console.error('[BILIBot] crawl error for', root, 'org:', org.url, e);
+            }
+        })
+    ));
 
     console.log('[BILIBot] search results:', results.length, 'for keywords:', qs);
 
-    // If nothing matched but we have keywords, try folder-level search
+    // If nothing matched but we have keywords, try folder-level search on both orgs
     if (results.length === 0 && !crawlError) {
-        await Promise.all(roots.map(async root => {
-            try {
-                const items = await listPath(root);
-                if (!Array.isArray(items)) return;
-                items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder').forEach(folder => {
-                    const fname = folder.name.toLowerCase();
-                    if (qs.some(q => fname.includes(q))) {
-                        results.push({ name: folder.name, fullPath: root + '/' + folder.name + '/_folder_', size: 0 });
-                    }
-                });
-            } catch (e) { }
-        }));
+        await Promise.all(orgs.flatMap(org =>
+            roots.map(async root => {
+                try {
+                    const items = await listPath(root, org.url, org.key);
+                    if (!Array.isArray(items)) return;
+                    items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder').forEach(folder => {
+                        const fname = folder.name.toLowerCase();
+                        const uniqueKey = `${org.url}::${root}/${folder.name}/_folder_`;
+                        if (qs.some(q => fname.includes(q)) && !seen.has(uniqueKey)) {
+                            seen.add(uniqueKey);
+                            results.push({ name: folder.name, fullPath: root + '/' + folder.name + '/_folder_', size: 0, orgUrl: org.url, orgKey: org.key });
+                        }
+                    });
+                } catch (e) { }
+            })
+        ));
         console.log('[BILIBot] folder-level results:', results.length);
     }
 
@@ -869,8 +1030,8 @@ async function biliBotSearchArchive(keywords, roots) {
 }
 
 // ─── BILIBot nav card click handler (global scope) ────────
-window.biliBotNavGo = function (folder, title) {
-    smartNavigate(folder, title);
+window.biliBotNavGo = function (folder, title, orgUrl, orgKey) {
+    smartNavigate(folder, title, orgUrl || SB_URL_ORG1, orgKey || SB_KEY_ORG1);
     if (biliBotOpen) toggleBiliBot();
 };
 
@@ -935,7 +1096,9 @@ function appendNavResults(matches, queryLabel) {
                     : `<span>📂 Open folder</span>`
                 }
                 </div>`;
-            card.addEventListener('click', () => window.biliBotNavGo(folder, folderName));
+            // Pass orgUrl/orgKey from the first file in this folder (or default to Org 1)
+            const repFile = data.files[0] || {};
+            card.addEventListener('click', () => window.biliBotNavGo(folder, folderName, repFile.orgUrl, repFile.orgKey));
             cardsWrap.appendChild(card);
         });
 
