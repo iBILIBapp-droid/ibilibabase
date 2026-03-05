@@ -324,8 +324,13 @@ function handleBack(path) {
 }
 
 function openViewer(url) {
-    const src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true&zoom=page-fit`;
-    document.getElementById('pdf-frame').src = src;
+    // Use native browser PDF rendering — shows ALL pages with proper zoom.
+    // #view=FitH fits width on desktop; page-width on mobile removes the zoom issue.
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    const hash = isMobile
+        ? '#toolbar=0&view=FitH&zoom=page-width'
+        : '#toolbar=1&view=FitH';
+    document.getElementById('pdf-frame').src = url + hash;
     showPage('viewer');
 }
 
