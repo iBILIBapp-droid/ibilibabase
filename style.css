@@ -1224,6 +1224,7 @@ section {
     inset: 0;
     background: #000;
     z-index: 9999;
+    display: flex;
     flex-direction: column;
 }
 
@@ -1242,13 +1243,17 @@ section {
 
 .pdf-wrapper {
     flex: 1;
-    background: white;
+    overflow: hidden;
+    background: #525659;
+    display: flex;
+    flex-direction: column;
 }
 
 #pdf-frame {
     width: 100%;
     height: 100%;
     border: none;
+    display: block;
 }
 
 /* =============================================

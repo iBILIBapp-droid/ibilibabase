@@ -324,7 +324,8 @@ function handleBack(path) {
 }
 
 function openViewer(url) {
-    document.getElementById('pdf-frame').src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+    const src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true&zoom=page-fit`;
+    document.getElementById('pdf-frame').src = src;
     showPage('viewer');
 }
 
