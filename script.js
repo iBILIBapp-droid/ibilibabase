@@ -2,20 +2,26 @@
 const SB_URL_PORTFOLIO = "https://gujzpqpcobwdsigxjcem.supabase.co";
 const SB_KEY_PORTFOLIO = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1anpwcXBjb2J3ZHNpZ3hqY2VtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNjMyMzMsImV4cCI6MjA4NzkzOTIzM30.3W1BtfXpXRcikt1bfOGwdFBQEVtT3xhrGbub-PyGQ6o";
 
-// ─── Organization 2 — iBILIB ─────────────────────────────────
+// ─── Organization 2 — iBILIB (previous) ──────────────────────
 const SB_URL_IBILIB = "https://utpuzryjocromtvstxeb.supabase.co";
 const SB_KEY_IBILIB = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0cHV6cnlqb2Nyb210dnN0eGViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MTg1MTYsImV4cCI6MjA4ODI5NDUxNn0.G_km1SkeuexDBmfx0oC1l0dFLM95CCQrfvJrdRxYXkk";
 
-// ─── Aliases used by admin upload panel (targets PORTFOLIO) ───
-// Change to SB_URL_IBILIB / SB_KEY_IBILIB to upload to iBilib instead.
-const SB_URL = SB_URL_PORTFOLIO;
-const SB_KEY = SB_KEY_PORTFOLIO;
+// ─── Organization 3 — iBILIB (active) ────────────────────────
+const SB_URL_IBILIB3 = "https://yapnbwxerwppsepcdcxi.supabase.co";
+const SB_KEY_IBILIB3 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhcG5id3hlcndwcHNlcGNkY3hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MjY2NDIsImV4cCI6MjA4ODEwMjY0Mn0.ROjaZEjyQ22-GHEussOo1Sr7VCAhoWnjO-42NCWtrxk";
+
+// ─── Aliases used by admin upload panel (targets Org 3) ───────
+// Admin uploads go to Organization 3 — iBilib active project (yapnbwxerwppsepcdcxi).
+const SB_URL = SB_URL_IBILIB3;
+const SB_KEY = SB_KEY_IBILIB3;
 
 // ─── Backwards-compat aliases (used internally) ───────────────
 const SB_URL_ORG1 = SB_URL_PORTFOLIO;
 const SB_KEY_ORG1 = SB_KEY_PORTFOLIO;
 const SB_URL_ORG2 = SB_URL_IBILIB;
 const SB_KEY_ORG2 = SB_KEY_IBILIB;
+const SB_URL_ORG3 = SB_URL_IBILIB3;
+const SB_KEY_ORG3 = SB_KEY_IBILIB3;
 
 // ─── State ───────────────────────────────────────────────
 let currentPage = 'home';   // 'home' | 'category' | 'browser'
