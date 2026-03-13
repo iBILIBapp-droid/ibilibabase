@@ -91,7 +91,7 @@ async function crawlAll(prefix, results = [], orgUrl = SB_URL_ORG1, orgKey = SB_
     const items = await listPath(prefix, orgUrl, orgKey);
     // listPath now always returns an array (empty on error), so no silent bail-out
     const folders = items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder');
-    const files   = items.filter(i =>  i.id && i.name !== '.emptyFolderPlaceholder');
+    const files = items.filter(i => i.id && i.name !== '.emptyFolderPlaceholder');
 
     for (const f of files) {
         results.push({ name: f.name, fullPath: `${prefix}/${f.name}`, size: f.metadata?.size, orgUrl, orgKey });
@@ -188,6 +188,7 @@ function renderFileObjects(files, container, isSearch = false) {
         const div = document.createElement('div');
         div.className = "liquid-card animate-tile";
         div.style.animationDelay = `${i * 0.07}s`;
+        div.dataset.filename = f.name;
 
         const parts = f.fullPath.split('/');
         const breadcrumb = parts.slice(0, -1).join(' › ');
@@ -207,6 +208,27 @@ function renderFileObjects(files, container, isSearch = false) {
         container.appendChild(div);
     });
     lucide.createIcons();
+
+    // BILIBot scroll-to: wait for the longest card animation to finish, then scroll
+    if (window._biliBotScrollTarget) {
+        const target = window._biliBotScrollTarget;
+        window._biliBotScrollTarget = null;
+        // Longest stagger = files.length * 0.07s + 0.65s animation = ~1.3s max
+        // Use 800ms as a safe wait that covers most cases without feeling slow
+        const waitMs = Math.min(files.length * 70 + 100, 800);
+        setTimeout(() => {
+            const card = container.querySelector(`[data-filename="${CSS.escape(target)}"]`);
+            if (card) {
+                card.style.animation = 'none';
+                card.style.opacity = '1';
+                card.scrollIntoView({ behavior: 'instant', block: 'center' });
+                // Force a reflow so the highlight starts fresh
+                void card.offsetHeight;
+                card.classList.add('bilibot-highlight');
+                setTimeout(() => card.classList.remove('bilibot-highlight'), 1800);
+            }
+        }, waitMs);
+    }
 }
 
 // Legacy wrapper kept for compatibility
@@ -283,10 +305,10 @@ async function runGlobalSearch(q) {
         ] = await Promise.all([
             crawlAll('research', [], SB_URL_ORG1, SB_KEY_ORG1),
             crawlAll('materials', [], SB_URL_ORG1, SB_KEY_ORG1),
-            crawlAll('prompts',   [], SB_URL_ORG1, SB_KEY_ORG1),
+            crawlAll('prompts', [], SB_URL_ORG1, SB_KEY_ORG1),
             crawlAll('research', [], SB_URL_ORG2, SB_KEY_ORG2),
             crawlAll('materials', [], SB_URL_ORG2, SB_KEY_ORG2),
-            crawlAll('prompts',   [], SB_URL_ORG2, SB_KEY_ORG2),
+            crawlAll('prompts', [], SB_URL_ORG2, SB_KEY_ORG2),
         ]);
 
         const all = [...res1Files, ...mat1Files, ...pro1Files, ...res2Files, ...mat2Files, ...pro2Files];
@@ -437,7 +459,7 @@ async function loadCategory(root, title) {
 
     const orgs = [
         { url: SB_URL_PORTFOLIO, key: SB_KEY_PORTFOLIO, label: 'PORTFOLIO' },
-        { url: SB_URL_IBILIB,    key: SB_KEY_IBILIB,    label: 'iBILIB' },
+        { url: SB_URL_IBILIB, key: SB_KEY_IBILIB, label: 'iBILIB' },
     ];
 
     try {
@@ -514,9 +536,9 @@ async function loadCategory(root, title) {
     }
 }
 
-function loadResearch()  { loadCategory('research',  'Research Studies'); }
+function loadResearch() { loadCategory('research', 'Research Studies'); }
 function loadMaterials() { loadCategory('materials', 'Learning Materials'); }
-function loadPrompts()   { loadCategory('prompts',   'Writing Prompts'); }
+function loadPrompts() { loadCategory('prompts', 'Writing Prompts'); }
 
 // ─── Theme toggle ──────────────────────────────
 function toggleTheme() {
@@ -551,6 +573,7 @@ window.onload = () => {
     const intro = document.getElementById('intro-screen');
     if (intro) setTimeout(() => intro.remove(), 2300);
     showPage('home');
+    loadGroqKeys();
     document.querySelectorAll('#home-page .liquid-card').forEach((card, i) => {
         card.classList.add('animate-tile');
         card.style.animationDelay = `${i * 0.15}s`;
@@ -954,10 +977,71 @@ function showToast(type, msg) {
    BILIBOT AI CHAT
    ============================================= */
 
-// ── Groq config — update key here if it changes ────────────
-const GROQ_API_KEY = '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';
+// ── Groq config ─────────────────────────────────────────────
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+let groqKeyPool = [];
+let groqActiveKey = null;
+
+async function loadGroqKeys() {
+    try {
+        const res = await fetch(
+            `${SB_URL_ORG3}/rest/v1/groq_keys?is_invalid=eq.false&select=id,key&order=id.asc`,
+            { headers: { 'apikey': SB_KEY_ORG3, 'Authorization': `Bearer ${SB_KEY_ORG3}` } }
+        );
+        if (!res.ok) throw new Error('Supabase fetch failed: ' + res.status);
+        const rows = await res.json();
+        groqKeyPool = Array.isArray(rows) ? rows : [];
+        groqActiveKey = groqKeyPool.length > 0 ? groqKeyPool[0].key : null;
+        console.log(`[BILIBot] ${groqKeyPool.length} Groq key(s) loaded.`);
+    } catch (e) {
+        console.warn('[BILIBot] Could not load Groq keys:', e);
+        groqActiveKey = null;
+    }
+}
+
+async function trashGroqKey(keyString) {
+    const entry = groqKeyPool.find(k => k.key === keyString);
+    if (entry) {
+        try {
+            await fetch(`${SB_URL_ORG3}/rest/v1/groq_keys?id=eq.${entry.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SB_KEY_ORG3,
+                    'Authorization': `Bearer ${SB_KEY_ORG3}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({ is_invalid: true, trashed_at: new Date().toISOString() })
+            });
+            console.warn('[BILIBot] Trashed invalid key id:', entry.id);
+        } catch (e) { console.warn('[BILIBot] Could not trash key:', e); }
+    }
+    groqKeyPool = groqKeyPool.filter(k => k.key !== keyString);
+    groqActiveKey = groqKeyPool.length > 0 ? groqKeyPool[0].key : null;
+}
+
+async function groqFetch(body) {
+    if (!groqActiveKey) await loadGroqKeys();
+    if (!groqActiveKey) throw new Error('NO_KEYS');
+    for (let attempt = 0; attempt < groqKeyPool.length + 1; attempt++) {
+        if (!groqActiveKey) break;
+        const currentKey = groqActiveKey;
+        const res = await fetch(GROQ_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentKey },
+            body: JSON.stringify(body)
+        });
+        if (res.status === 401) {
+            console.warn('[BILIBot] 401 — trashing key and rotating…');
+            await trashGroqKey(currentKey);
+            continue;
+        }
+        return res;
+    }
+    throw new Error('ALL_KEYS_INVALID');
+}
 // ──────────────────────────────────────────────────────────
 
 let biliBotOpen = false;
@@ -977,15 +1061,58 @@ function setBiliBotMode(mode) {
 // Searches across both Org 1 and Org 2 and merges the results.
 async function biliBotSearchArchive(keywords, roots) {
     if (!roots) roots = ['research', 'materials', 'prompts'];
-    const qs = (Array.isArray(keywords) ? keywords : [keywords]).map(k => k.toLowerCase().trim()).filter(Boolean);
+
+    // Normalize keywords: lowercase, trim, also split multi-word into individual words
+    // so "solar energy" matches files containing "solar" OR "energy" OR "solar energy"
+    const rawQs = (Array.isArray(keywords) ? keywords : [keywords])
+        .map(k => k.toLowerCase().trim()).filter(Boolean);
+    const qs = [...new Set([
+        ...rawQs,
+        ...rawQs.flatMap(q => q.split(/[\s_\-]+/)).filter(w => w.length > 2)
+    ])];
+
+    // Helper: normalize a filename for matching — underscores/hyphens/dots → spaces
+    const normalize = str => str.toLowerCase().replace(/[_\-\.]+/g, ' ');
+
+    // Fuzzy match: returns true if query is "close enough" to any word in the target
+    // Uses Levenshtein distance — tolerates 1 typo for short words, 2 for longer ones
+    const fuzzyMatch = (query, target) => {
+        // First try exact substring (fast path)
+        if (target.includes(query)) return true;
+        // Split target into individual words and check each
+        const targetWords = target.split(' ').filter(w => w.length > 2);
+        for (const word of targetWords) {
+            if (Math.abs(word.length - query.length) > 2) continue; // skip if too different in length
+            const maxDist = query.length <= 4 ? 1 : 2; // allow 1 typo for short, 2 for long
+            if (levenshtein(query, word) <= maxDist) return true;
+        }
+        return false;
+    };
+
+    // Levenshtein distance (edit distance between two strings)
+    const levenshtein = (a, b) => {
+        const m = a.length, n = b.length;
+        const dp = Array.from({ length: m + 1 }, (_, i) => [i]);
+        for (let j = 0; j <= n; j++) dp[0][j] = j;
+        for (let i = 1; i <= m; i++) {
+            for (let j = 1; j <= n; j++) {
+                dp[i][j] = a[i - 1] === b[j - 1]
+                    ? dp[i - 1][j - 1]
+                    : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+            }
+        }
+        return dp[m][n];
+    };
+
     const seen = new Set();
     const results = [];
     let crawlError = null;
 
-    // Build crawl tasks for both orgs
+    // Search ALL three orgs — Org 1, 2 (read), and Org 3 (admin uploads)
     const orgs = [
         { url: SB_URL_ORG1, key: SB_KEY_ORG1 },
         { url: SB_URL_ORG2, key: SB_KEY_ORG2 },
+        { url: SB_URL_ORG3, key: SB_KEY_ORG3 },
     ];
 
     await Promise.all(orgs.flatMap(org =>
@@ -994,10 +1121,11 @@ async function biliBotSearchArchive(keywords, roots) {
                 const all = await crawlAll(root, [], org.url, org.key);
                 console.log('[BILIBot] crawled', root, '(org:', org.url.split('.')[0].split('//')[1], ') →', all.length, 'files');
                 all.forEach(f => {
-                    const path = f.fullPath.toLowerCase();
-                    // Use orgUrl as part of uniqueness key so same-path files from different orgs both appear
+                    // Only match against the file TITLE/NAME — not folder path
+                    const normName = normalize(f.name);
                     const uniqueKey = `${org.url}::${f.fullPath}`;
-                    if (qs.some(q => path.includes(q)) && !seen.has(uniqueKey)) {
+                    const isMatch = qs.some(q => fuzzyMatch(q, normName));
+                    if (isMatch && !seen.has(uniqueKey)) {
                         seen.add(uniqueKey);
                         results.push({ ...f, orgUrl: org.url, orgKey: org.key });
                     }
@@ -1011,7 +1139,7 @@ async function biliBotSearchArchive(keywords, roots) {
 
     console.log('[BILIBot] search results:', results.length, 'for keywords:', qs);
 
-    // If nothing matched but we have keywords, try folder-level search on both orgs
+    // Fallback: folder-level search across all three orgs
     if (results.length === 0 && !crawlError) {
         await Promise.all(orgs.flatMap(org =>
             roots.map(async root => {
@@ -1019,9 +1147,9 @@ async function biliBotSearchArchive(keywords, roots) {
                     const items = await listPath(root, org.url, org.key);
                     if (!Array.isArray(items)) return;
                     items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder').forEach(folder => {
-                        const fname = folder.name.toLowerCase();
+                        const normName = normalize(folder.name);
                         const uniqueKey = `${org.url}::${root}/${folder.name}/_folder_`;
-                        if (qs.some(q => fname.includes(q)) && !seen.has(uniqueKey)) {
+                        if (qs.some(q => fuzzyMatch(q, normName)) && !seen.has(uniqueKey)) {
                             seen.add(uniqueKey);
                             results.push({ name: folder.name, fullPath: root + '/' + folder.name + '/_folder_', size: 0, orgUrl: org.url, orgKey: org.key });
                         }
@@ -1039,6 +1167,61 @@ async function biliBotSearchArchive(keywords, roots) {
 window.biliBotNavGo = function (folder, title, orgUrl, orgKey) {
     smartNavigate(folder, title, orgUrl || SB_URL_ORG1, orgKey || SB_KEY_ORG1);
     if (biliBotOpen) toggleBiliBot();
+};
+
+window.biliBotGoToFile = async function (folder, title, filename, orgUrl, orgKey) {
+    if (biliBotOpen) toggleBiliBot();
+
+    const resolvedUrl = orgUrl || SB_URL_ORG1;
+    const resolvedKey = orgKey || SB_KEY_ORG1;
+
+    // Show browser page immediately with skeleton while loading
+    const browserContainer = document.getElementById('browser-container');
+    let skeletonHTML = '';
+    for (let i = 0; i < 6; i++) {
+        skeletonHTML += `<div class="liquid-card skeleton-card animate-pulse" style="opacity:1;animation-delay:${i * 0.1}s">
+            <div class="card-icon-wrap"></div>
+            <div class="card-inner">
+                <div class="skeleton-line skeleton-title"></div>
+                <div class="skeleton-line skeleton-desc"></div>
+            </div>
+            <div class="skeleton-action"></div>
+        </div>`;
+    }
+    browserContainer.innerHTML = skeletonHTML;
+    showPage('browser');
+    document.getElementById('browser-title').innerText = title;
+    document.getElementById('browser-back-btn').onclick = () => handleBack(folder, resolvedUrl, resolvedKey);
+    lucide.createIcons();
+
+    try {
+        // Fetch the folder's files directly — no intermediate category page
+        const items = await listPath(folder, resolvedUrl, resolvedKey);
+        currentFiles = items
+            .filter(i => i.id && i.name !== '.emptyFolderPlaceholder')
+            .map(f => ({
+                name: f.name,
+                fullPath: `${folder}/${f.name}`,
+                size: f.metadata?.size,
+                orgUrl: resolvedUrl,
+                orgKey: resolvedKey
+            }));
+        currentPath = folder;
+        currentRootScope = folder.split('/')[0];
+
+        // Set scroll target BEFORE rendering so renderFileObjects picks it up
+        window._biliBotScrollTarget = filename;
+        renderFileObjects(currentFiles, browserContainer);
+        document.getElementById('browser-back-btn').onclick = () => handleBack(folder, resolvedUrl, resolvedKey);
+        // DO NOT call lucide.createIcons() again — renderFileObjects already does it
+        // and a second call resets the DOM, breaking the scroll target
+    } catch (e) {
+        browserContainer.innerHTML = `<div class="liquid-card" style="opacity:1">
+            <div class="card-icon-wrap"><i data-lucide="wifi-off"></i></div>
+            <div class="card-inner"><h3>Network Error</h3><p>Could not reach archive</p></div>
+        </div>`;
+        lucide.createIcons();
+    }
 };
 
 // ─── BILIBot: render nav result cards in chat ─────────────
@@ -1088,22 +1271,38 @@ function appendNavResults(matches, queryLabel) {
             const rootLabel = root === 'research' ? 'Research' : root === 'materials' ? 'Materials' : 'Prompts';
             const fileCount = data.files.length;
 
+            const repFile = data.files[0] || {};
             const card = document.createElement('div');
             card.className = 'bilibot-nav-card';
+
+            let filesHTML = '';
+            if (fileCount > 0) {
+                filesHTML = data.files.slice(0, 3).map(f => {
+                    const fname = f.fullPath.split('/').pop();
+                    const sf = folder.replace(/'/g, "\'");
+                    const sfn = folderName.replace(/'/g, "\'");
+                    const sfname = fname.replace(/'/g, "\'");
+                    const sou = (f.orgUrl || '').replace(/'/g, "\'");
+                    const sok = (f.orgKey || '').replace(/'/g, "\'");
+                    return `<div class="bilibot-nav-file-row">
+                        <span class="bilibot-nav-file-name">${fname.replace(/_/g, ' ')}</span>
+                        <button class="bilibot-go-btn" onclick="event.stopPropagation();window.biliBotGoToFile('${sf}','${sfn}','${sfname}','${sou}','${sok}')">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Go
+                        </button>
+                    </div>`;
+                }).join('') + (fileCount > 3 ? `<div class="bilibot-nav-file-row"><span>+${fileCount - 3} more</span></div>` : '');
+            } else {
+                filesHTML = `<span>📂 Open folder</span>`;
+            }
+
             card.innerHTML = `
                 <div class="bilibot-nav-card-top">
                     <span class="bilibot-nav-root">${rootIcon} ${rootLabel}</span>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                 </div>
                 <div class="bilibot-nav-folder">📁 ${subFolder}</div>
-                <div class="bilibot-nav-files">
-                    ${fileCount > 0
-                    ? data.files.slice(0, 3).map(f => `<span>${f.fullPath.split('/').pop()}</span>`).join('') + (fileCount > 3 ? `<span>+${fileCount - 3} more</span>` : '')
-                    : `<span>📂 Open folder</span>`
-                }
-                </div>`;
-            // Pass orgUrl/orgKey from the first file in this folder (or default to Org 1)
-            const repFile = data.files[0] || {};
+                <div class="bilibot-nav-files">${filesHTML}</div>`;
+
             card.addEventListener('click', () => window.biliBotNavGo(folder, folderName, repFile.orgUrl, repFile.orgKey));
             cardsWrap.appendChild(card);
         });
@@ -1186,6 +1385,50 @@ function sendSuggestion(btn) {
     const text = btn.textContent;
     document.getElementById('bilibot-suggestions').style.display = 'none';
     document.getElementById('bilibot-input').value = text;
+    sendBiliBot();
+}
+
+// ── Find-in-library quick bar ────────────────────────────
+// Appended after every bot reply so the user can always search fast
+function showFindBar() {
+    const container = document.getElementById('bilibot-messages');
+    // Remove any existing find bars first so there's only ever one at the bottom
+    container.querySelectorAll('.bilibot-find-bar').forEach(el => el.remove());
+
+    const bar = document.createElement('div');
+    bar.className = 'bilibot-find-bar';
+    bar.innerHTML = `
+        <span class="bilibot-find-label">🔍 Find in library:</span>
+        <div class="bilibot-find-row">
+            <input class="bilibot-find-input" type="text" placeholder='e.g. "bangus study"' autocomplete="off" spellcheck="false">
+            <button class="bilibot-find-btn">Search</button>
+        </div>
+        <div class="bilibot-find-chips">
+            <button onclick="biliBotQuickFind(this)" data-q="research">📚 Research</button>
+            <button onclick="biliBotQuickFind(this)" data-q="materials">📖 Materials</button>
+            <button onclick="biliBotQuickFind(this)" data-q="prompts">✏️ Prompts</button>
+        </div>`;
+
+    // Wire up the search input + button
+    const inp = bar.querySelector('.bilibot-find-input');
+    const btn = bar.querySelector('.bilibot-find-btn');
+    const doSearch = () => {
+        const q = inp.value.trim();
+        if (!q) return;
+        inp.value = '';
+        document.getElementById('bilibot-input').value = 'find "' + q + '"';
+        sendBiliBot();
+    };
+    btn.addEventListener('click', doSearch);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+    container.appendChild(bar);
+    container.scrollTop = container.scrollHeight;
+}
+
+function biliBotQuickFind(btn) {
+    const q = btn.dataset.q;
+    document.getElementById('bilibot-input').value = 'find "' + q + '"';
     sendBiliBot();
 }
 
@@ -1308,6 +1551,27 @@ async function sendBiliBot() {
     const sendBtn = document.getElementById('bilibot-send-btn');
     const text = input.value.trim();
     if (!text && biliBotFiles.length === 0) return;
+
+    // ── Fast-find shortcut: find "topic" or find topic ──────
+    const findMatch = text.match(/^find\s+"([^"]+)"/i) || text.match(/^find\s+(.+)/i);
+    if (findMatch) {
+        const topic = findMatch[1].trim();
+        // Pass the whole phrase AND individual words so partial matches work
+        const topicWords = topic.split(/[\s_\-]+/).filter(w => w.length > 2);
+        const searchTerms = [topic, ...topicWords];
+        input.value = '';
+        appendMessage('user', text.replace(/</g, '&lt;'));
+        showTyping();
+        setTimeout(async () => {
+            hideTyping();
+            appendMessage('bot', '🔍 Searching the library for <strong>"' + topic + '"</strong>…');
+            const matches = await biliBotSearchArchive(searchTerms, ['research']);
+            appendNavResults(matches, topic);
+            showFindBar();
+        }, 400);
+        return;
+    }
+    // ────────────────────────────────────────────────────────
 
     const userText = text || '(See attached files)';
     input.value = '';
@@ -1482,25 +1746,21 @@ async function sendBiliBot() {
         'research about', 'materials about', 'prompts about', 'about'];
     const isNavIntent = navTriggers.some(t => lowerText.includes(t));
 
-    // Determine which root to search based on context clues
-    let searchRoots = ['research', 'materials', 'prompts']; // default: all
-    if (/(research|capstone|thesis|study)/.test(lowerText)) searchRoots = ['research'];
-    else if (/(material|module|lesson|module)/.test(lowerText)) searchRoots = ['materials'];
-    else if (/(prompt|essay|writing task)/.test(lowerText)) searchRoots = ['prompts'];
+    // BILIBot only navigates Research Studies
+    const searchRoots = ['research'];
+
+
+
 
     if (isNavIntent) {
         try {
-            const kwRes = await fetch(GROQ_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
-                body: JSON.stringify({
-                    model: GROQ_MODEL,
-                    max_tokens: 80,
-                    messages: [{
-                        role: 'user',
-                        content: 'Extract the specific topic the user wants to find in a school archive. Include scientific/alternate names (e.g. "bangus" → ["bangus","milkfish"]). Reply ONLY as a JSON array of strings, max 4 items. The topic must be a real subject — NOT generic words like "research", "materials", "file", "topic", "something", "available". If no specific topic exists, reply exactly: ["NONE"]. User message: "' + userText + '"'
-                    }]
-                })
+            const kwRes = await groqFetch({
+                model: GROQ_MODEL,
+                max_tokens: 80,
+                messages: [{
+                    role: 'user',
+                    content: 'Extract the specific topic the user wants to find in a school archive. Include scientific/alternate names (e.g. "bangus" → ["bangus","milkfish"]). Reply ONLY as a JSON array of strings, max 4 items. The topic must be a real subject — NOT generic words like "research", "materials", "file", "topic", "something", "available". If no specific topic exists, reply exactly: ["NONE"]. User message: "' + userText + '"'
+                }]
             });
             const kwData = await kwRes.json();
             let raw = (kwData.choices?.[0]?.message?.content || '').trim().replace(/```json|```/g, '').trim();
@@ -1520,6 +1780,7 @@ async function sendBiliBot() {
                 appendMessage('bot', '🔍 Searching for <strong>"' + label + '"</strong>' + (keywords.length > 1 ? ' and related terms' : '') + '…');
                 const matches = await biliBotSearchArchive(keywords, searchRoots);
                 appendNavResults(matches, keywords.join(' / '));
+                showFindBar();
                 input.disabled = false;
                 sendBtn.disabled = false;
                 input.focus();
@@ -1548,25 +1809,29 @@ If specific → reply as plain text. NEVER mix text + JSON.
 
 Be warm and encouraging. You may use occasional emojis.`;
 
+    let response, data;
     try {
-        const response = await fetch(GROQ_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + GROQ_API_KEY
-            },
-            body: JSON.stringify({
-                model: GROQ_MODEL,
-                max_tokens: isFast ? 300 : 1000,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    ...biliBotHistory.slice(-6)
-                ]
-            })
+        response = await groqFetch({
+            model: GROQ_MODEL,
+            max_tokens: isFast ? 300 : 1000,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                ...biliBotHistory.slice(-6)
+            ]
         });
+        data = await response.json();
+    } catch (poolErr) {
+        hideTyping();
+        if (poolErr.message === 'NO_KEYS' || poolErr.message === 'ALL_KEYS_INVALID') {
+            appendMessage('bot', '⚠️ BILIBot is temporarily unavailable — all API keys have been used up. Please ask the admin to add new keys.');
+        } else {
+            appendMessage('bot', '⚠️ Connection error: ' + poolErr.message);
+        }
+        input.disabled = false; sendBtn.disabled = false; input.focus();
+        return;
+    }
 
-        const data = await response.json();
-
+    try {
         if (!response.ok) {
             const errMsg = data.error?.message || JSON.stringify(data);
             hideTyping();
@@ -1587,6 +1852,7 @@ Be warm and encouraging. You may use occasional emojis.`;
                 const parsed = JSON.parse(trimmed.slice(jsonStart, jsonEnd + 1));
                 if (parsed.clarify && parsed.question && Array.isArray(parsed.options)) {
                     appendClarification(parsed.question, parsed.options);
+                    showFindBar();
                     return;
                 }
             } catch (e) { /* not JSON, fall through */ }
@@ -1597,6 +1863,7 @@ Be warm and encouraging. You may use occasional emojis.`;
             .replace(/\n/g, '<br>');
 
         appendMessage('bot', formatted);
+        showFindBar();
 
     } catch (err) {
         hideTyping();

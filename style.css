@@ -2644,6 +2644,148 @@ section {
     border-color: rgba(124,58,237,0.6);
 }
 
+/* ── Find-in-library bar ── */
+.bilibot-find-bar {
+    margin: 6px 12px 10px;
+    background: rgba(124,58,237,0.07);
+    border: 1px solid rgba(124,58,237,0.25);
+    border-radius: 14px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.bilibot-find-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #a78bfa;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+.bilibot-find-row {
+    display: flex;
+    gap: 6px;
+}
+.bilibot-find-input {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(124,58,237,0.3);
+    border-radius: 10px;
+    padding: 7px 10px;
+    font-size: 12.5px;
+    color: var(--text, #e2e8f0);
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.bilibot-find-input:focus {
+    border-color: rgba(124,58,237,0.7);
+}
+.bilibot-find-input::placeholder {
+    color: rgba(167,139,250,0.45);
+}
+.bilibot-find-btn {
+    background: rgba(124,58,237,0.75);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 7px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+.bilibot-find-btn:hover {
+    background: rgba(124,58,237,1);
+}
+.bilibot-find-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+.bilibot-find-chips button {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    border: 1px solid rgba(124,58,237,0.3);
+    background: rgba(124,58,237,0.08);
+    color: #c4b5fd;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+.bilibot-find-chips button:hover {
+    background: rgba(124,58,237,0.22);
+    border-color: rgba(124,58,237,0.6);
+    color: #fff;
+}
+[data-theme="light"] .bilibot-find-bar {
+    background: rgba(124,58,237,0.06);
+    border-color: rgba(124,58,237,0.2);
+}
+[data-theme="light"] .bilibot-find-input {
+    background: rgba(255,255,255,0.8);
+    color: #1e1b4b;
+    border-color: rgba(124,58,237,0.25);
+}
+[data-theme="light"] .bilibot-find-input::placeholder {
+    color: rgba(124,58,237,0.4);
+}
+
+/* ── Nav card: file row with Go button ── */
+.bilibot-nav-file-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 2px 0;
+}
+.bilibot-nav-file-name {
+    font-size: 11.5px;
+    color: var(--text-muted, #94a3b8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+.bilibot-go-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 100px;
+    border: 1px solid rgba(124,58,237,0.5);
+    background: rgba(124,58,237,0.15);
+    color: #a78bfa;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.bilibot-go-btn:hover {
+    background: rgba(124,58,237,0.35);
+    border-color: rgba(124,58,237,0.9);
+    color: #fff;
+    transform: translateX(2px);
+}
+
+/* ── Highlight pulse when BILIBot scrolls to a file ── */
+@keyframes bilibot-file-highlight {
+    0%   { background: rgba(253,224,71,0.45); }
+    60%  { background: rgba(253,224,71,0.25); }
+    100% { background: var(--card-bg); }
+}
+.bilibot-highlight {
+    /* Override animate-tile so layout is stable before scroll */
+    animation: bilibot-file-highlight 1.8s ease-out forwards !important;
+    animation-delay: 0s !important;
+}
+
 /* Input */
 .bilibot-input-row {
     display: flex;
