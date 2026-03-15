@@ -1,3 +1,102 @@
+/* ═══════════════════════════════════════
+   iBilib Auth Guard — Student Page
+   Hides page until session verified
+   Blocks teachers from accessing this page
+═══════════════════════════════════════ */
+
+document.documentElement.style.cssText = 'visibility:hidden;opacity:0';
+
+(function() {
+  const s = document.createElement('style');
+  s.textContent = `
+    #_gs{position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0d0820;gap:16px}
+    #_gs.blocked{background:#1a0820}
+    ._gl{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#f1e9ff;letter-spacing:-.5px}
+    ._gl span{color:#a855f7}
+    ._gsp{width:36px;height:36px;border-radius:50%;border:3px solid rgba(168,85,247,.2);border-top-color:#a855f7;animation:_gspin .7s linear infinite}
+    ._gbi{font-size:48px}
+    ._gbt{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:#fca5a5;text-align:center}
+    ._gbs{font-size:14px;color:#a78fbf;text-align:center}
+    ._gbb{margin-top:8px;padding:10px 24px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:50px;color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(124,58,237,.4);transition:transform .15s}
+    ._gbb:hover{transform:translateY(-2px)}
+    @keyframes _gspin{to{transform:rotate(360deg)}}
+    #_ab{position:fixed;top:12px;right:16px;z-index:99999;display:flex;align-items:center;gap:8px;animation:_abIn .4s cubic-bezier(.22,1,.36,1) both}
+    @keyframes _abIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+    #_up{display:flex;align-items:center;gap:8px;padding:6px 13px 6px 7px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);border-radius:50px;backdrop-filter:blur(16px);box-shadow:0 4px 18px rgba(0,0,0,.25);color:#f1e9ff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #_av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+    #_lb{display:flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.28);border-radius:50px;color:#fca5a5;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;backdrop-filter:blur(16px);box-shadow:0 4px 18px rgba(0,0,0,.25);transition:background .2s,border-color .2s,transform .15s;white-space:nowrap}
+    #_lb:hover{background:rgba(248,113,113,.22);border-color:rgba(248,113,113,.5);transform:translateY(-1px)}
+    @media(max-width:768px){#_up{display:none}#_ab{top:10px;right:10px}}
+  `;
+  document.head.appendChild(s);
+  const gs = document.createElement('div');
+  gs.id = '_gs';
+  gs.innerHTML = '<div class="_gl">i<span>Bilib</span></div><div class="_gsp"></div>';
+  document.body.appendChild(gs);
+})();
+
+const _SB = supabase.createClient(
+  'https://yapnbwxerwppsepcdcxi.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhcG5id3hlcndwcHNlcGNkY3hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MjY2NDIsImV4cCI6MjA4ODEwMjY0Mn0.ROjaZEjyQ22-GHEussOo1Sr7VCAhoWnjO-42NCWtrxk'
+);
+
+function _blocked(msg) {
+  const gs = document.getElementById('_gs');
+  gs.classList.add('blocked');
+  gs.innerHTML = `<div class="_gbi">🔒</div><div class="_gbt">Access Denied</div><div class="_gbs">${msg}</div><button class="_gbb" onclick="window.location.replace('../index.html')">← Go to Login</button>`;
+  document.documentElement.style.cssText = 'visibility:visible;opacity:1';
+}
+
+async function _getRole(user) {
+  const meta = (user.user_metadata || {});
+  const r = (meta.role || meta.user_role || '').toLowerCase();
+  if (r) return r;
+  try {
+    const res = await Promise.race([
+      _SB.from('profiles').select('role').eq('id', user.id).single(),
+      new Promise((_, rej) => setTimeout(() => rej('timeout'), 3000))
+    ]);
+    return (res?.data?.role || 'student').toLowerCase();
+  } catch { return 'student'; }
+}
+
+(async () => {
+  const { data: { session } } = await _SB.auth.getSession();
+  if (!session) { window.location.replace('../index.html'); return; }
+
+  const role = await _getRole(session.user);
+  if (role === 'teacher' || role === 'private') {
+    _blocked('This page is for students only.');
+    return;
+  }
+
+  // ✅ Auth passed — reveal page
+  document.getElementById('_gs')?.remove();
+  document.documentElement.style.cssText = 'visibility:visible;opacity:1;transition:opacity .3s';
+
+  const name = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+  const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const bar = document.createElement('div');
+  bar.id = '_ab';
+  bar.innerHTML = `<div id="_up"><div id="_av">${initials}</div>${name}</div>
+    <button id="_lb" onclick="_logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>Logout</button>`;
+  document.body.appendChild(bar);
+
+  window._logout = async () => {
+    const b = document.getElementById('_lb');
+    b.textContent = 'Signing out…'; b.disabled = true;
+    await _SB.auth.signOut();
+    window.location.replace('../index.html');
+  };
+  _SB.auth.onAuthStateChange(e => {
+    if (e === 'SIGNED_OUT') window.location.replace('../index.html');
+  });
+})();
+
+/* ═══ iBilib Script ═══ */
 // ─── Organization 1 — PORTFOLIO ──────────────────────────────
 const SB_URL_PORTFOLIO = "https://gujzpqpcobwdsigxjcem.supabase.co";
 const SB_KEY_PORTFOLIO = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1anpwcXBjb2J3ZHNpZ3hqY2VtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNjMyMzMsImV4cCI6MjA4NzkzOTIzM30.3W1BtfXpXRcikt1bfOGwdFBQEVtT3xhrGbub-PyGQ6o";
