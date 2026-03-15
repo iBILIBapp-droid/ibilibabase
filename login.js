@@ -9,8 +9,8 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-const STUDENT_URL = '/iBilib/index.html';
-const TEACHER_URL = '/iBILIB%20teacher/index.html';
+const STUDENT_URL = '/ibilib/index.html';
+const TEACHER_URL = '/ibilib-teacher/index.html';
 
 /* ── store email between signup → verify steps ── */
 let pendingEmail = '';
@@ -282,7 +282,7 @@ async function handleGoogle() {
   try {
     const { error } = await sb.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: 'https://ibilibanhs.vercel.app/login.html' }
+      options: { redirectTo: 'https://ibilibanhs.vercel.app/index.html' }
     });
     if (error) throw error;
   } catch (err) {
