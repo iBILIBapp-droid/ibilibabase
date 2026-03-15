@@ -3627,3 +3627,55 @@ section {
         right: 8px !important;
     }
 }
+
+/* BILIBot mode button icons */
+.bilibot-mode-btn i,
+.bilibot-mode-btn svg {
+    width: 13px;
+    height: 13px;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+/* BILIBot send/attach/close icon sizing */
+.bilibot-send i, .bilibot-send svg,
+.bilibot-attach-btn i, .bilibot-attach-btn svg,
+.bilibot-header-close i, .bilibot-header-close svg,
+.bilibot-fab-close i, .bilibot-fab-close svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+/* Inline search icon in BILIBot messages */
+.bilibot-inline-icon {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+.bilibot-inline-icon svg { width: 13px; height: 13px; }
+.bilibot-find-label-icon {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-right: 5px;
+}
+.bilibot-find-label-icon svg { width: 11px; height: 11px; }
+/* Hero CTA button icons */
+.btn-cta-primary i, .btn-cta-primary svg,
+.btn-cta-ghost i, .btn-cta-ghost svg {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+/* Hero dot separator */
+.hero-dot {
+    display: inline-block;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.3;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+

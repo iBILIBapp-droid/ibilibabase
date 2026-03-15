@@ -292,7 +292,7 @@ input[type="email"],
 input[type="password"],
 input[type="text"] {
   width: 100%;
-  padding: 13px 14px 13px 42px;
+  padding: 13px 46px 13px 42px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-input);
@@ -316,20 +316,32 @@ input:focus {
 
 .toggle-pw {
   position: absolute;
-  right: 14px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 18px;
-  padding: 2px;
-  transition: color 0.2s;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+  line-height: 0;
 }
 
 .toggle-pw:hover {
   color: var(--purple-soft);
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.toggle-pw svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  stroke: currentColor;
 }
 
 /* ─── FORGOT LINK ─── */
@@ -683,4 +695,46 @@ input:focus {
     border-radius: 10px;
   }
   .otp-row { gap: 7px; }
+}
+
+/* ── Lucide icons inside input fields ── */
+.input-icon-svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 17px;
+    height: 17px;
+    color: var(--text-muted);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+}
+.input-icon-svg svg {
+    width: 17px;
+    height: 17px;
+    stroke: var(--text-muted);
+    display: block;
+}
+
+/* ── Verify panel icon ── */
+.verify-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+.verify-lucide-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--purple-soft);
+    animation: float 3s ease-in-out infinite;
+}
+.verify-lucide-icon svg {
+    width: 48px;
+    height: 48px;
+    stroke: var(--purple-soft);
+    display: block;
 }

@@ -35,7 +35,7 @@ const _SB = supabase.createClient(
 function _blocked(msg) {
   const gs = document.getElementById('_gs');
   gs.classList.add('blocked');
-  gs.innerHTML = `<div class="_gbi">🔒</div><div class="_gbt">Access Denied</div><div class="_gbs">${msg}</div><button class="_gbb" onclick="_fadeOut(()=>window.location.replace('../index.html'))">← Go to Login</button>`;
+  gs.innerHTML = `<div class="_gbi"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="_gbt">Access Denied</div><div class="_gbs">${msg}</div><button class="_gbb" onclick="_fadeOut(()=>window.location.replace('../index.html'))">← Go to Login</button>`;
   requestAnimationFrame(() => { document.documentElement.style.opacity = '1'; });
 }
 
@@ -935,7 +935,7 @@ async function loadSubfolders(cat) {
             for (const f of folders) {
                 const opt = document.createElement('option');
                 opt.value = f.name;
-                opt.textContent = '📁 ' + f.name;
+                opt.textContent = '' + f.name;
                 select.appendChild(opt);
 
                 try {
@@ -962,7 +962,7 @@ async function loadSubfolders(cat) {
         setTimeout(() => hint.classList.remove('pulse'), 600);
 
     } catch (e) {
-        hint.textContent = '⚠️ Could not load folders';
+        hint.textContent = 'Could not load folders';
         select.classList.remove('loading');
     }
     lucide.createIcons();
@@ -1141,7 +1141,7 @@ async function startUpload() {
     lucide.createIcons();
 
     if (failed === 0) {
-        showToast('success', `✓ ${done} file${done !== 1 ? 's' : ''} uploaded successfully to ${basePath}`);
+        showToast('success', `${done} file${done !== 1 ? 's' : ''} uploaded successfully to ${basePath}`);
     } else {
         showToast('error', `${done} uploaded, ${failed} failed. Check your connection.`);
     }
@@ -1275,7 +1275,7 @@ function setBiliBotMode(mode) {
     biliBotMode = mode;
     document.getElementById('mode-fast').classList.toggle('active', mode === 'fast');
     document.getElementById('mode-deep').classList.toggle('active', mode === 'deep');
-    const label = mode === 'fast' ? '⚡ Fast mode — quick answers!' : '🧠 Deep mode — careful thinking!';
+    const label = mode === 'fast' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Fast mode — quick answers!' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg> Deep mode — careful thinking!';
     appendMessage('bot', label);
 }
 
@@ -1489,7 +1489,7 @@ function appendNavResults(matches, queryLabel) {
             const root = parts[0];
             const folderName = parts[parts.length - 1];
             const subFolder = parts.slice(1).join(' › ') || root;
-            const rootIcon = root === 'research' ? '📚' : root === 'materials' ? '📋' : '✏️';
+            const rootIcon = root === 'research' ? '' : root === 'materials' ? '' : '';
             const rootLabel = root === 'research' ? 'Research' : root === 'materials' ? 'Materials' : 'Prompts';
             const fileCount = data.files.length;
 
@@ -1533,7 +1533,7 @@ function appendNavResults(matches, queryLabel) {
 
         const hint = document.createElement('div');
         hint.style.cssText = 'font-size:11px;color:#a78bfa;margin-top:8px';
-        hint.textContent = 'Tap a card to go there 👆';
+        hint.textContent = 'Tap a card to open it';
         bubble.appendChild(hint);
     }
 
@@ -1786,7 +1786,7 @@ async function sendBiliBot() {
         showTyping();
         setTimeout(async () => {
             hideTyping();
-            appendMessage('bot', '🔍 Searching the library for <strong>"' + topic + '"</strong>…');
+            appendMessage('bot', '<span class="bilibot-inline-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span> Searching the library for <strong>"' + topic + '"</strong>…');
             const matches = await biliBotSearchArchive(searchTerms, ['research']);
             appendNavResults(matches, topic);
             showFindBar();
@@ -1865,9 +1865,9 @@ async function sendBiliBot() {
         { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}research/i, root: 'research', title: 'Research Studies', icon: '📚' },
         { regex: /what.{0,20}research.{0,25}(available|there|have|exist)/i, root: 'research', title: 'Research Studies', icon: '📚' },
         { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}(material|module)/i, root: 'materials', title: 'Learning Materials', icon: '📋' },
-        { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}prompt/i, root: 'prompts', title: 'Writing Prompts', icon: '✏️' },
+        { regex: /(what|show|list|give|any).{0,25}(available|examples?|list).{0,20}prompt/i, root: 'prompts', title: 'Writing Prompts', icon: '' },
         { regex: /what.{0,20}(material|module).{0,25}(available|there|have)/i, root: 'materials', title: 'Learning Materials', icon: '📋' },
-        { regex: /what.{0,20}prompt.{0,25}(available|there|have)/i, root: 'prompts', title: 'Writing Prompts', icon: '✏️' },
+        { regex: /what.{0,20}prompt.{0,25}(available|there|have)/i, root: 'prompts', title: 'Writing Prompts', icon: '' },
         // bare "what are available" / "what are the available" without category = default to research
         { regex: /what.{0,10}are.{0,10}(the\s+)?available/i, root: 'research', title: 'Research Studies', icon: '📚' },
         { regex: /what.{0,10}(files?|docs?|documents?).{0,10}(are\s+)?(available|there)/i, root: 'research', title: 'Research Studies', icon: '📚' },
@@ -1910,7 +1910,7 @@ async function sendBiliBot() {
                     const navPath = availableMatch.root + '/' + item.name;
                     const card = document.createElement('div'); // temp — build via string then attach listener
                     html += '<div class="bilibot-sample-card" data-path="' + navPath + '" data-name="' + item.name + '">' +
-                        (isFolder ? '📁' : '📄') + ' ' + item.name +
+                        (isFolder ? '' : '📄') + ' ' + item.name +
                         '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-left:auto;flex-shrink:0"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>' +
                         '</div>';
                 });
@@ -1931,7 +1931,7 @@ async function sendBiliBot() {
             container2.appendChild(wrap2);
             container2.scrollTop = container2.scrollHeight;
         } catch (e) {
-            appendMessage('bot', '⚠️ Could not load archive examples. Try browsing using the menu above!');
+            appendMessage('bot', 'Could not load archive examples. Try browsing using the menu above!');
         }
         input.disabled = false;
         sendBtn.disabled = false;
@@ -1943,7 +1943,7 @@ async function sendBiliBot() {
     const categoryRoutes = [
         { patterns: ['research studies', 'research study', 'show research', 'open research', 'go to research', 'what research', 'research topics', 'research available', 'research folder'], root: 'research', title: 'Research Studies', icon: '📚' },
         { patterns: ['learning material', 'learning module', 'show materials', 'open materials', 'go to materials', 'study material', 'modules available', 'show modules', 'materials available'], root: 'materials', title: 'Learning Materials', icon: '📋' },
-        { patterns: ['writing prompt', 'show prompts', 'open prompts', 'go to prompts', 'prompts available', 'writing tasks', 'essay prompt'], root: 'prompts', title: 'Writing Prompts', icon: '✏️' },
+        { patterns: ['writing prompt', 'show prompts', 'open prompts', 'go to prompts', 'prompts available', 'writing tasks', 'essay prompt'], root: 'prompts', title: 'Writing Prompts', icon: '' },
     ];
 
     const matchedRoute = categoryRoutes.find(function (r) {
@@ -1999,7 +1999,7 @@ async function sendBiliBot() {
             if (keywords.length > 0) {
                 hideTyping();
                 const label = keywords[0];
-                appendMessage('bot', '🔍 Searching for <strong>"' + label + '"</strong>' + (keywords.length > 1 ? ' and related terms' : '') + '…');
+                appendMessage('bot', '<span class="bilibot-inline-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span> Searching for <strong>"' + label + '"</strong>' + (keywords.length > 1 ? ' and related terms' : '') + '…');
                 const matches = await biliBotSearchArchive(keywords, searchRoots);
                 appendNavResults(matches, keywords.join(' / '));
                 showFindBar();
@@ -2045,11 +2045,11 @@ Be warm and encouraging. You may use occasional emojis.`;
     } catch (poolErr) {
         hideTyping();
         if (poolErr.message === 'API_PROXY_NOT_FOUND') {
-            appendMessage('bot', '⚠️ BILIBot proxy not found. Make sure <code>api/chat.js</code> is deployed on Vercel.');
+            appendMessage('bot', 'BILIBot proxy not found. Make sure <code>api/chat.js</code> is deployed on Vercel.');
         } else if (poolErr.message && poolErr.message.startsWith('API_PROXY_ERROR')) {
-            appendMessage('bot', '⚠️ BILIBot server error — please try again shortly.');
+            appendMessage('bot', 'BILIBot server error — please try again shortly.');
         } else {
-            appendMessage('bot', '⚠️ Connection error: ' + poolErr.message);
+            appendMessage('bot', 'Connection error: ' + poolErr.message);
         }
         input.disabled = false; sendBtn.disabled = false; input.focus();
         return;
@@ -2059,10 +2059,10 @@ Be warm and encouraging. You may use occasional emojis.`;
         if (!response.ok) {
             hideTyping();
             if (response.status === 503) {
-                appendMessage('bot', '⚠️ ' + (data.error || 'All Groq keys are exhausted. Please add new keys to the Supabase groq_keys table.'));
+                appendMessage('bot', '' + (data.error || 'All Groq keys are exhausted. Please add new keys to the Supabase groq_keys table.'));
             } else {
                 const errMsg = data.error?.message || data.error || JSON.stringify(data);
-                appendMessage('bot', '⚠️ API Error (' + response.status + '): ' + errMsg);
+                appendMessage('bot', 'API Error (' + response.status + '): ' + errMsg);
             }
             return;
         }
@@ -2095,7 +2095,7 @@ Be warm and encouraging. You may use occasional emojis.`;
 
     } catch (err) {
         hideTyping();
-        appendMessage('bot', '⚠️ Connection error: ' + err.message);
+        appendMessage('bot', 'Connection error: ' + err.message);
     } finally {
         input.disabled = false;
         sendBtn.disabled = false;
