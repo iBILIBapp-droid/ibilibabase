@@ -9,8 +9,8 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-const STUDENT_URL = 'iBilib/index.html';
-const TEACHER_URL = 'iBILIB teacher/index.html';
+const STUDENT_URL = '/iBilib/index.html';
+const TEACHER_URL = '/iBILIB%20teacher/index.html';
 
 /* ── store email between signup → verify steps ── */
 let pendingEmail = '';
@@ -111,12 +111,17 @@ async function handleSignup(e) {
       if (!msg.toLowerCase().includes('database error')) throw error;
     }
 
-    // Store email for the verify step
-    pendingEmail = email;
-    toast('Code sent! Check your email.', 'success');
-
-    // Switch to verify panel
-    setTimeout(() => showVerifyPanel(email), 800);
+    // No email verification — sign in immediately after signup
+    const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({
+      email, password: pw
+    });
+    if (signInError) {
+      toast('Account created! You can now sign in.', 'success');
+      setTimeout(() => switchTab('login'), 1500);
+      return;
+    }
+    toast('Account created! Redirecting…', 'success');
+    await redirectByRole(signInData.user);
 
   } catch (err) {
     toast(err.message || 'Sign up failed. Please try again.');
@@ -277,7 +282,7 @@ async function handleGoogle() {
   try {
     const { error } = await sb.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/login.html' }
+      options: { redirectTo: 'https://ibilibanhs.vercel.app/login.html' }
     });
     if (error) throw error;
   } catch (err) {
