@@ -275,11 +275,14 @@
         <section id="viewer-page" class="hidden">
             <div class="viewer-nav">
                 <button class="btn-icon" onclick="closeViewer()"><i data-lucide="arrow-left"></i></button>
-                <span>Document Reader</span>
-                <div style="width:42px"></div>
+                <span id="viewer-filename" class="viewer-title">Document Reader</span>
+                <button class="btn-icon" onclick="directDownload(_viewerUrl, _viewerFilename)" title="Download">
+                    <i data-lucide="download"></i>
+                </button>
             </div>
-            <div class="pdf-wrapper">
-                <iframe id="pdf-frame" src=""></iframe>
+            <div class="pdf-wrapper" id="pdf-wrapper-inner">
+                <iframe id="pdf-frame" src="" allow="fullscreen"></iframe>
+                <div id="docx-viewer" style="display:none"></div>
             </div>
         </section>
 

@@ -278,7 +278,7 @@ function renderFileObjects(files, container, isSearch = false) {
                 <button class="btn-icon" title="Download" onclick="event.stopPropagation(); directDownload('${baseUrl}', '${f.name}')">
                     <i data-lucide="download"></i>
                 </button>
-                <button class="btn-purple-action" onclick="event.stopPropagation(); openViewer('${baseUrl}')">View</button>
+                <button class="btn-purple-action" onclick="event.stopPropagation(); openViewer('${baseUrl}', '${f.name}')">View</button>
             </div>`;
         container.appendChild(div);
     });
@@ -470,17 +470,134 @@ function handleBack(path, orgUrl = SB_URL_ORG1, orgKey = SB_KEY_ORG1) {
     else { parts.pop(); smartNavigate(parts.join('/'), parts[parts.length - 1] || 'Back', orgUrl, orgKey); }
 }
 
-function openViewer(url) {
-    // Use Mozilla PDF.js viewer — renders ALL pages, fits to screen width on any device
-    const pdfjs = 'https://mozilla.github.io/pdf.js/web/viewer.html';
-    document.getElementById('pdf-frame').src = `${pdfjs}?file=${encodeURIComponent(url)}`;
+
+// ─── File Viewer — multi-fallback for all devices ────────
+// Strategy:
+//   PDF  → try Google Docs viewer → fallback to direct iframe → fallback to download
+//   DOCX → mammoth.js text extract → rendered in viewer
+//   Other → Google Docs viewer → fallback download
+
+let _viewerUrl = '';
+let _viewerFilename = '';
+let _viewerFallback = 0; // tracks which strategy we're on
+
+function openViewer(url, filename) {
+    _viewerUrl = url;
+    _viewerFilename = filename || url.split('/').pop().split('?')[0];
+    _viewerFallback = 0;
     showPage('viewer');
+    _renderViewer();
 }
 
 function closeViewer() {
-    document.getElementById('pdf-frame').src = "";
+    _viewerUrl = '';
+    _viewerFilename = '';
+    _viewerFallback = 0;
+    const frame = document.getElementById('pdf-frame');
+    const docxWrap = document.getElementById('docx-viewer');
+    if (frame) frame.src = '';
+    if (docxWrap) { docxWrap.innerHTML = ''; docxWrap.style.display = 'none'; }
+    if (frame) frame.style.display = 'block';
     showPage('browser');
 }
+
+function _renderViewer() {
+    const url = _viewerUrl;
+    const ext = url.split('?')[0].split('.').pop().toLowerCase();
+    const frame = document.getElementById('pdf-frame');
+    const docxWrap = document.getElementById('docx-viewer');
+    const title = document.getElementById('viewer-filename');
+
+    if (title) title.textContent = _viewerFilename.replace(/_/g, ' ');
+
+    // ── DOCX: use mammoth.js to render as HTML ──────────
+    if (ext === 'docx') {
+        frame.style.display = 'none';
+        docxWrap.style.display = 'flex';
+        docxWrap.innerHTML = '<div class="viewer-loading"><div class="viewer-spinner"></div><p>Loading document…</p></div>';
+        fetch(url)
+            .then(r => { if (!r.ok) throw new Error('fetch failed'); return r.arrayBuffer(); })
+            .then(buf => mammoth.convertToHtml({ arrayBuffer: buf }))
+            .then(result => {
+                docxWrap.innerHTML = `<div class="docx-content">${result.value}</div>`;
+            })
+            .catch(() => _showViewerError());
+        return;
+    }
+
+    // ── PDF / PPT / DOC: try Google Docs viewer first ──
+    frame.style.display = 'block';
+    if (docxWrap) { docxWrap.innerHTML = ''; docxWrap.style.display = 'none'; }
+
+    _loadFrameWithFallback(url, ext);
+}
+
+function _loadFrameWithFallback(url, ext) {
+    const frame = document.getElementById('pdf-frame');
+
+    const strategies = [
+        // 0: Google Docs viewer — best for mobile, handles PDF/DOCX/PPTX
+        `https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(url)}`,
+        // 1: Direct iframe — works if browser has native PDF support
+        url,
+        // 2: Mozilla PDF.js — desktop fallback
+        `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(url)}`,
+    ];
+
+    if (_viewerFallback >= strategies.length) {
+        _showViewerError();
+        return;
+    }
+
+    // Show loading state
+    frame.src = '';
+    const wrap = document.getElementById('pdf-wrapper-inner');
+    if (wrap) wrap.setAttribute('data-loading', 'true');
+
+    const src = strategies[_viewerFallback];
+
+    // Set a timeout — if iframe doesn't load in 12s, try next strategy
+    let timeoutId = setTimeout(() => {
+        console.warn('[Viewer] strategy', _viewerFallback, 'timed out, trying next…');
+        _viewerFallback++;
+        _loadFrameWithFallback(url, ext);
+    }, 12000);
+
+    frame.onload = () => {
+        clearTimeout(timeoutId);
+        if (wrap) wrap.removeAttribute('data-loading');
+        // Check if Google Docs returned an error page (it loads but shows "no preview")
+        // We can't detect this cross-origin, so just trust it loaded
+    };
+    frame.onerror = () => {
+        clearTimeout(timeoutId);
+        console.warn('[Viewer] strategy', _viewerFallback, 'error, trying next…');
+        _viewerFallback++;
+        _loadFrameWithFallback(url, ext);
+    };
+
+    frame.src = src;
+}
+
+function _showViewerError() {
+    const frame = document.getElementById('pdf-frame');
+    const docxWrap = document.getElementById('docx-viewer');
+    frame.style.display = 'none';
+    if (docxWrap) docxWrap.style.display = 'flex';
+    if (docxWrap) docxWrap.innerHTML = `
+        <div class="viewer-error">
+            <div class="viewer-error-icon">📄</div>
+            <p class="viewer-error-title">Preview unavailable</p>
+            <p class="viewer-error-sub">This file can't be previewed on your device.</p>
+            <button class="btn-cta-primary" onclick="directDownload('${_viewerUrl}', '${_viewerFilename}')">
+                ⬇ Download File
+            </button>
+            <button class="btn-cta-ghost" style="margin-top:10px" onclick="window.open('${_viewerUrl}','_blank')">
+                🔗 Open in Browser
+            </button>
+        </div>`;
+}
+
 
 function directDownload(url, filename) {
     // 1. Append ?download= — tells Supabase to send Content-Disposition: attachment
@@ -606,6 +723,156 @@ async function loadCategory(root, title) {
         container.innerHTML = `<div class="liquid-card" style="opacity:1">
             <div class="card-icon-wrap"><i data-lucide="wifi-off"></i></div>
             <div class="card-inner"><h3>Network Error</h3><p>Could not reach archive</p></div>
+        </div>`;
+        lucide.createIcons();
+    }
+}
+
+
+// ─── Teacher Files category ───────────────────────────────
+// Structure:
+//   teacher-files/
+//     test-papers/         ← has Grade-7 to Grade-12 subfolders
+//     dll/                 ← files go directly here, no grade subfolders
+//
+// All teacher files live in Org 3 (active iBilib project).
+
+async function loadTeacherFiles() {
+    const container = document.getElementById('category-container');
+    currentRootScope = 'teacher-files';
+
+    // Show skeleton
+    let skeletonHTML = '';
+    for (let i = 0; i < 2; i++) {
+        skeletonHTML += `<div class="liquid-card skeleton-card animate-pulse" style="opacity:1;animation-delay:${i*0.1}s">
+            <div class="card-icon-wrap"></div>
+            <div class="card-inner">
+                <div class="skeleton-line skeleton-title"></div>
+                <div class="skeleton-line skeleton-desc"></div>
+            </div>
+            <div class="skeleton-action"></div>
+        </div>`;
+    }
+    container.innerHTML = skeletonHTML;
+    showPage('category');
+    document.getElementById('category-page-title').innerText = 'Teacher Files';
+    document.getElementById('category-back-btn').onclick = () => showPage('home');
+    lucide.createIcons();
+
+    container.innerHTML = '';
+
+    // ── Test Papers card → navigates into grade subfolders ──
+    const testCard = document.createElement('div');
+    testCard.className = 'liquid-card liquid-card-teacher animate-tile';
+    testCard.style.animationDelay = '0s';
+    testCard.onclick = () => loadTestPapers();
+    testCard.innerHTML = `
+        <div class="card-icon-wrap card-icon-teacher"><i data-lucide="file-text"></i></div>
+        <div class="card-inner">
+            <h3>Test Papers</h3>
+            <p>Sorted by grade level · Grade 7 to 12</p>
+        </div>
+        <i data-lucide="arrow-right" class="card-arrow amber-text"></i>`;
+    container.appendChild(testCard);
+
+    // ── DLL card → goes straight to file browser ──
+    const dllCard = document.createElement('div');
+    dllCard.className = 'liquid-card liquid-card-teacher animate-tile';
+    dllCard.style.animationDelay = '0.08s';
+    dllCard.onclick = () => loadDLL();
+    dllCard.innerHTML = `
+        <div class="card-icon-wrap card-icon-teacher"><i data-lucide="book-marked"></i></div>
+        <div class="card-inner">
+            <h3>Daily Lesson Log (DLL)</h3>
+            <p>All DLL files in one place</p>
+        </div>
+        <i data-lucide="arrow-right" class="card-arrow amber-text"></i>`;
+    container.appendChild(dllCard);
+
+    lucide.createIcons();
+}
+
+// ── Test Papers: show Grade 7–12 grade picker ─────────────
+function loadTestPapers() {
+    const container = document.getElementById('category-container');
+    showPage('category');
+    document.getElementById('category-page-title').innerText = 'Test Papers';
+    document.getElementById('category-back-btn').onclick = () => loadTeacherFiles();
+
+    const grades = ['Grade-7', 'Grade-8', 'Grade-9', 'Grade-10', 'Grade-11', 'Grade-12'];
+    container.innerHTML = '';
+
+    grades.forEach((grade, i) => {
+        const div = document.createElement('div');
+        div.className = 'liquid-card liquid-card-teacher animate-tile';
+        div.style.animationDelay = `${i * 0.07}s`;
+        div.onclick = () => {
+            currentPath = `teacher-files/test-papers/${grade}`;
+            currentRootScope = 'teacher-files';
+            smartNavigate(
+                `teacher-files/test-papers/${grade}`,
+                grade.replace('-', ' '),
+                SB_URL_ORG3, SB_KEY_ORG3
+            );
+            // override back button to return to grade list
+            setTimeout(() => {
+                document.getElementById('browser-back-btn').onclick = () => loadTestPapers();
+                document.getElementById('category-back-btn').onclick = () => loadTestPapers();
+            }, 50);
+        };
+        div.innerHTML = `
+            <div class="card-icon-wrap card-icon-teacher"><i data-lucide="graduation-cap"></i></div>
+            <div class="card-inner">
+                <h3>${grade.replace('-', ' ')}</h3>
+                <p>Test papers for ${grade.replace('-', ' ')}</p>
+            </div>
+            <i data-lucide="arrow-right" class="card-arrow amber-text"></i>`;
+        container.appendChild(div);
+    });
+
+    lucide.createIcons();
+}
+
+// ── DLL: go straight to file browser ────────────────────
+async function loadDLL() {
+    const browserContainer = document.getElementById('browser-container');
+    showPage('browser');
+    document.getElementById('browser-title').innerText = 'Daily Lesson Log (DLL)';
+    document.getElementById('browser-back-btn').onclick = () => loadTeacherFiles();
+    currentPath = 'teacher-files/dll';
+    currentRootScope = 'teacher-files';
+
+    // Show skeleton
+    let skeletonHTML = '';
+    for (let i = 0; i < 6; i++) {
+        skeletonHTML += `<div class="liquid-card skeleton-card animate-pulse" style="opacity:1;animation-delay:${i*0.1}s">
+            <div class="card-icon-wrap"></div>
+            <div class="card-inner">
+                <div class="skeleton-line skeleton-title"></div>
+                <div class="skeleton-line skeleton-desc"></div>
+            </div>
+            <div class="skeleton-action"></div>
+        </div>`;
+    }
+    browserContainer.innerHTML = skeletonHTML;
+    lucide.createIcons();
+
+    try {
+        const items = await listPath('teacher-files/dll', SB_URL_ORG3, SB_KEY_ORG3);
+        currentFiles = items
+            .filter(i => i.id && i.name !== '.emptyFolderPlaceholder')
+            .map(f => ({
+                name: f.name,
+                fullPath: `teacher-files/dll/${f.name}`,
+                size: f.metadata?.size,
+                orgUrl: SB_URL_ORG3,
+                orgKey: SB_KEY_ORG3
+            }));
+        renderFileObjects(currentFiles, browserContainer);
+    } catch (e) {
+        browserContainer.innerHTML = `<div class="liquid-card" style="opacity:1">
+            <div class="card-icon-wrap"><i data-lucide="wifi-off"></i></div>
+            <div class="card-inner"><h3>Network Error</h3><p>Could not load DLL files</p></div>
         </div>`;
         lucide.createIcons();
     }
@@ -796,12 +1063,39 @@ async function loadSubfolders(cat) {
     const hint = document.getElementById('subfolder-hint');
     if (!select) return;
 
-    // Animate: loading state
     hint.textContent = '⏳ Loading…';
     hint.classList.remove('pulse');
     select.classList.add('loading');
     select.classList.remove('loaded');
     select.innerHTML = '<option value="">— Root (no subfolder) —</option>';
+
+    // Teacher files has a fixed known structure — no need to fetch from API
+    if (cat === 'teacher-files') {
+        const structure = [
+            { label: '📁 test-papers', value: 'test-papers' },
+            { label: '  └ 📁 test-papers › Grade-7',  value: 'test-papers/Grade-7'  },
+            { label: '  └ 📁 test-papers › Grade-8',  value: 'test-papers/Grade-8'  },
+            { label: '  └ 📁 test-papers › Grade-9',  value: 'test-papers/Grade-9'  },
+            { label: '  └ 📁 test-papers › Grade-10', value: 'test-papers/Grade-10' },
+            { label: '  └ 📁 test-papers › Grade-11', value: 'test-papers/Grade-11' },
+            { label: '  └ 📁 test-papers › Grade-12', value: 'test-papers/Grade-12' },
+            { label: '📁 dll', value: 'dll' },
+        ];
+        structure.forEach(({ label, value }) => {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = label;
+            select.appendChild(opt);
+        });
+        hint.textContent = '✦ 2 folders found';
+        select.classList.remove('loading');
+        select.classList.add('loaded');
+        void select.offsetWidth;
+        hint.classList.add('pulse');
+        setTimeout(() => hint.classList.remove('pulse'), 600);
+        lucide.createIcons();
+        return;
+    }
 
     try {
         const items = await listPath(cat);
@@ -1049,23 +1343,35 @@ function showToast(type, msg) {
    ============================================= */
 
 // ── Groq config ─────────────────────────────────────────────
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL  = 'llama-3.3-70b-versatile';
+const GROQ_DIRECT = 'https://api.groq.com/openai/v1/chat/completions';
 
+// Detect environment:
+// - On Vercel (production) → use /api/chat proxy (key is server-side, safe)
+// - Locally (file:// or localhost) → call Groq directly using keys from Supabase
+const IS_LOCAL = (
+    window.location.protocol === 'file:' ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+);
+const GROQ_URL = IS_LOCAL ? null : '/api/chat';
+
+// ── Key pool (used only when running locally) ────────────
 let groqKeyPool = [];
 let groqActiveKey = null;
 
 async function loadGroqKeys() {
+    if (!IS_LOCAL) return; // not needed on Vercel — proxy handles it
     try {
         const res = await fetch(
             `${SB_URL_ORG3}/rest/v1/groq_keys?is_invalid=eq.false&select=id,key&order=id.asc`,
-            { headers: { 'apikey': SB_KEY_ORG3, 'Authorization': `Bearer ${SB_KEY_ORG3}` } }
+            { headers: { apikey: SB_KEY_ORG3, Authorization: `Bearer ${SB_KEY_ORG3}` } }
         );
         if (!res.ok) throw new Error('Supabase fetch failed: ' + res.status);
         const rows = await res.json();
         groqKeyPool = Array.isArray(rows) ? rows : [];
         groqActiveKey = groqKeyPool.length > 0 ? groqKeyPool[0].key : null;
-        console.log(`[BILIBot] ${groqKeyPool.length} Groq key(s) loaded.`);
+        console.log(`[BILIBot] ${groqKeyPool.length} key(s) loaded for local use.`);
     } catch (e) {
         console.warn('[BILIBot] Could not load Groq keys:', e);
         groqActiveKey = null;
@@ -1073,20 +1379,20 @@ async function loadGroqKeys() {
 }
 
 async function trashGroqKey(keyString) {
+    if (!IS_LOCAL) return;
     const entry = groqKeyPool.find(k => k.key === keyString);
     if (entry) {
         try {
             await fetch(`${SB_URL_ORG3}/rest/v1/groq_keys?id=eq.${entry.id}`, {
                 method: 'PATCH',
                 headers: {
-                    'apikey': SB_KEY_ORG3,
-                    'Authorization': `Bearer ${SB_KEY_ORG3}`,
+                    apikey: SB_KEY_ORG3,
+                    Authorization: `Bearer ${SB_KEY_ORG3}`,
                     'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
+                    Prefer: 'return=minimal'
                 },
                 body: JSON.stringify({ is_invalid: true, trashed_at: new Date().toISOString() })
             });
-            console.warn('[BILIBot] Trashed invalid key id:', entry.id);
         } catch (e) { console.warn('[BILIBot] Could not trash key:', e); }
     }
     groqKeyPool = groqKeyPool.filter(k => k.key !== keyString);
@@ -1094,18 +1400,40 @@ async function trashGroqKey(keyString) {
 }
 
 async function groqFetch(body) {
+    // ── Vercel: use server-side proxy ──────────────────────
+    if (!IS_LOCAL) {
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+            const txt = await res.text();
+            console.error('[BILIBot] proxy non-JSON:', res.status, txt.slice(0, 200));
+            if (res.status === 404) throw new Error('API_PROXY_NOT_FOUND');
+            throw new Error('API_PROXY_ERROR_' + res.status);
+        }
+        return res;
+    }
+
+    // ── Local: call Groq directly with rotating key pool ──
     if (!groqActiveKey) await loadGroqKeys();
     if (!groqActiveKey) throw new Error('NO_KEYS');
+
     for (let attempt = 0; attempt < groqKeyPool.length + 1; attempt++) {
         if (!groqActiveKey) break;
         const currentKey = groqActiveKey;
-        const res = await fetch(GROQ_URL, {
+        const res = await fetch(GROQ_DIRECT, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentKey },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + currentKey
+            },
             body: JSON.stringify(body)
         });
-        if (res.status === 401) {
-            console.warn('[BILIBot] 401 — trashing key and rotating…');
+        if (res.status === 401 || res.status === 429) {
+            console.warn('[BILIBot] key', res.status, '— rotating…');
             await trashGroqKey(currentKey);
             continue;
         }
@@ -1113,7 +1441,7 @@ async function groqFetch(body) {
     }
     throw new Error('ALL_KEYS_INVALID');
 }
-// ──────────────────────────────────────────────────────────
+
 
 let biliBotOpen = false;
 let biliBotHistory = [];
@@ -1893,8 +2221,10 @@ Be warm and encouraging. You may use occasional emojis.`;
         data = await response.json();
     } catch (poolErr) {
         hideTyping();
-        if (poolErr.message === 'NO_KEYS' || poolErr.message === 'ALL_KEYS_INVALID') {
-            appendMessage('bot', '⚠️ BILIBot is temporarily unavailable — all API keys have been used up. Please ask the admin to add new keys.');
+        if (poolErr.message === 'API_PROXY_NOT_FOUND') {
+            appendMessage('bot', '⚠️ BILIBot proxy not found. Make sure <code>api/chat.js</code> is deployed on Vercel.');
+        } else if (poolErr.message && poolErr.message.startsWith('API_PROXY_ERROR')) {
+            appendMessage('bot', '⚠️ BILIBot server error — please try again shortly.');
         } else {
             appendMessage('bot', '⚠️ Connection error: ' + poolErr.message);
         }
@@ -1904,9 +2234,13 @@ Be warm and encouraging. You may use occasional emojis.`;
 
     try {
         if (!response.ok) {
-            const errMsg = data.error?.message || JSON.stringify(data);
             hideTyping();
-            appendMessage('bot', '⚠️ API Error (' + response.status + '): ' + errMsg);
+            if (response.status === 503) {
+                appendMessage('bot', '⚠️ ' + (data.error || 'All Groq keys are exhausted. Please add new keys to the Supabase groq_keys table.'));
+            } else {
+                const errMsg = data.error?.message || data.error || JSON.stringify(data);
+                appendMessage('bot', '⚠️ API Error (' + response.status + '): ' + errMsg);
+            }
             return;
         }
 

@@ -2841,14 +2841,7 @@ section {
 [data-theme="light"] body .bilibot-input-row input::placeholder { color: #94a3b8; }
 
 /* Mobile */
-@media (max-width: 480px) {
-    .bilibot-panel {
-        right: 12px;
-        bottom: 88px;
-        width: calc(100vw - 24px);
-    }
-    .bilibot-fab { right: 18px; bottom: 22px; }
-}
+
 
 /* BILIBot File Upload */
 .bilibot-attach-btn {
@@ -3390,129 +3383,6 @@ section {
 }
 
 /* =============================================
-   MOBILE FIX — RESPONSIVE LAYOUT
-   ============================================= */
-
-@media (max-width: 767px) {
-
-    /* Hero: tighter sizing */
-    .hero h1 {
-        font-size: clamp(1.5rem, 6.5vw, 2rem);
-        letter-spacing: -0.5px;
-    }
-
-    .hero p {
-        font-size: 0.875rem;
-        padding: 0 4px;
-    }
-
-    .hero-cta {
-        gap: 8px;
-    }
-
-    .btn-cta-primary,
-    .btn-cta-ghost {
-        padding: 11px 22px;
-        font-size: 0.9rem;
-    }
-
-    /* Cards: full-width single column, better touch targets */
-    .liquid-card {
-        padding: 14px 16px;
-        gap: 12px;
-    }
-
-    .card-icon-wrap {
-        width: 38px;
-        height: 38px;
-        border-radius: 11px;
-    }
-
-    .card-inner h3 {
-        font-size: 0.9rem;
-    }
-
-    .card-inner p {
-        font-size: 0.78rem;
-    }
-
-    /* Inner page back header */
-    .hero-mini {
-        padding: 16px 0 14px;
-    }
-
-    .hero-mini h2 {
-        font-size: 1.1rem;
-    }
-
-    /* Navbar safe area */
-    .navbar {
-        padding: 0 14px;
-    }
-
-    .nav-inner {
-        height: 52px;
-    }
-
-    /* Mobile search row spacing */
-    .nav-mobile-search-row {
-        padding: 0 0 8px;
-    }
-
-    /* Hero rings — smaller so they don't overflow */
-    .ring1 { width: 200px; height: 200px; }
-    .ring2 { width: 300px; height: 300px; }
-    .ring3 { display: none; }
-
-    /* Hero orb smaller */
-    .hero-orb {
-        width: 300px;
-        height: 300px;
-        top: -60px;
-    }
-
-    /* Section label spacing */
-    .section-label {
-        margin-bottom: 12px;
-        font-size: 0.7rem;
-    }
-
-    /* Category stack always single column on phone */
-    .category-stack {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 10px !important;
-    }
-
-    /* Admin modal full-width on phone */
-    .modal-box {
-        padding: 24px 18px 20px;
-        border-radius: 20px;
-        max-width: 100%;
-    }
-
-    .upload-box {
-        padding: 20px 16px 18px;
-    }
-
-    /* Upload footer stacked */
-    .upload-footer {
-        flex-direction: column;
-    }
-
-    .upload-footer button {
-        width: 100%;
-        justify-content: center;
-    }
-
-    /* Credits footer */
-    .site-credits {
-        margin-top: 40px;
-        padding: 0 16px 100px;
-    }
-}
-
-/* =============================================
    MOBILE FIX — SMALL PHONES (≤390px)
    ============================================= */
 @media (max-width: 390px) {
@@ -3542,6 +3412,294 @@ section {
 }
 
 /* =============================================
-   DESKTOP FIX — AUTH BAR NAV OVERLAP
-   Handled directly in auth.js injected styles.
+   TEACHER FILES — Special Card Styling
    ============================================= */
+
+/* Nav link highlight */
+.nav-link-teacher {
+    color: var(--violet-light) !important;
+    font-weight: 600 !important;
+}
+.nav-link-teacher.active,
+.nav-link-teacher:hover {
+    background: rgba(180, 83, 9, 0.35) !important;
+    color: #fff !important;
+}
+
+/* Mobile menu link */
+.mob-link-teacher {
+    color: var(--violet-light);
+    font-weight: 500;
+}
+.mob-link-teacher i { color: var(--violet-light) !important; }
+
+/* Card — amber glow border */
+.liquid-card-teacher {
+    border-color: rgba(251, 191, 36, 0.28) !important;
+    background: rgba(180, 83, 9, 0.07) !important;
+}
+.liquid-card-teacher:hover {
+    border-color: rgba(251, 191, 36, 0.55) !important;
+    box-shadow: 0 12px 40px rgba(180, 83, 9, 0.25),
+                0 0 0 1px rgba(251, 191, 36, 0.18) inset !important;
+}
+
+/* Icon wrap — stronger amber */
+.card-icon-teacher {
+    background: rgba(180, 83, 9, 0.28) !important;
+    border-color: rgba(251, 191, 36, 0.35) !important;
+    color: #fbbf24 !important;
+}
+.liquid-card-teacher:hover .card-icon-teacher {
+    background: rgba(180, 83, 9, 0.42) !important;
+    box-shadow: 0 0 20px rgba(180, 83, 9, 0.4) !important;
+}
+
+/* "Private" badge on the card title */
+.teacher-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #b45309, #f59e0b);
+    color: #fff;
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin-left: 8px;
+    vertical-align: middle;
+    line-height: 1.6;
+}
+
+/* Admin upload cat button */
+.cat-btn-teacher {
+    border-color: rgba(251, 191, 36, 0.3) !important;
+    color: #fbbf24 !important;
+}
+.cat-btn-teacher:hover {
+    border-color: rgba(251, 191, 36, 0.6) !important;
+    color: #fff !important;
+}
+.cat-btn-teacher.active {
+    background: rgba(180, 83, 9, 0.35) !important;
+    border-color: rgba(251, 191, 36, 0.5) !important;
+    color: #fff !important;
+    box-shadow: 0 0 16px rgba(180, 83, 9, 0.3) !important;
+}
+
+/* =============================================
+   VIEWER — Enhanced mobile-friendly styles
+   ============================================= */
+
+/* Filename in nav bar — truncate if too long */
+.viewer-title {
+    flex: 1;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 10px;
+    color: var(--text);
+}
+
+/* pdf-wrapper fills all remaining height */
+.pdf-wrapper {
+    position: relative;
+}
+
+/* Loading state overlay on the wrapper */
+.pdf-wrapper[data-loading="true"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: #1a1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+.pdf-wrapper[data-loading="true"]::before {
+    content: "Loading…";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    color: var(--text-sub);
+    font-size: 0.9rem;
+    font-family: "DM Sans", sans-serif;
+}
+
+/* docx-viewer — scrollable content area */
+#docx-viewer {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    -webkit-overflow-scrolling: touch;
+}
+
+.docx-content {
+    width: 100%;
+    max-width: 780px;
+    padding: 32px 24px 48px;
+    font-family: "DM Sans", Georgia, serif;
+    font-size: 15px;
+    line-height: 1.75;
+    color: #1a1a1a;
+}
+.docx-content h1, .docx-content h2, .docx-content h3 {
+    font-family: "Syne", sans-serif;
+    margin: 1.2em 0 0.5em;
+    color: #111;
+}
+.docx-content p { margin-bottom: 0.85em; }
+.docx-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 13px;
+}
+.docx-content td, .docx-content th {
+    border: 1px solid #ddd;
+    padding: 7px 10px;
+}
+.docx-content th { background: #f5f5f5; font-weight: 600; }
+
+/* Loading spinner inside viewer */
+.viewer-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    flex: 1;
+    color: var(--text-sub);
+    font-size: 0.9rem;
+    background: #1a1200;
+}
+.viewer-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(251,191,36,0.2);
+    border-top-color: #f59e0b;
+    border-radius: 50%;
+    animation: viewerSpin 0.75s linear infinite;
+}
+@keyframes viewerSpin { to { transform: rotate(360deg); } }
+
+/* Error state */
+.viewer-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex: 1;
+    padding: 40px 24px;
+    text-align: center;
+    background: #1a1200;
+}
+.viewer-error-icon { font-size: 48px; }
+.viewer-error-title {
+    font-family: "Syne", sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+}
+.viewer-error-sub {
+    font-size: 0.875rem;
+    color: var(--text-sub);
+    margin-bottom: 8px;
+}
+
+/* Mobile — ensure iframe fills cleanly */
+@media (max-width: 767px) {
+    .viewer-title {
+        font-size: 0.78rem;
+    }
+
+    /* Prevent the iframe from having white flash */
+    #pdf-frame {
+        background: #525659;
+    }
+
+    /* Larger tap target for back button */
+    .viewer-nav .btn-icon {
+        width: 44px;
+        height: 44px;
+    }
+
+    .docx-content {
+        padding: 20px 16px 40px;
+        font-size: 14px;
+    }
+}
+
+
+
+@media (max-width: 768px) {
+
+    /* Bottom padding so last card is never hidden
+       behind the logout button or BILIBot FAB     */
+    main {
+        padding-bottom: 100px;
+    }
+
+    /* Move BILIBot FAB to bottom-RIGHT so it does
+       not overlap the logout button (bottom-LEFT)  */
+    .bilibot-fab {
+        bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+        right: 16px !important;
+    }
+
+    /* BILIBot panel also shifts up from FAB        */
+    .bilibot-panel {
+        bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+        right: 12px !important;
+        width: calc(100vw - 24px) !important;
+        max-height: 70vh !important;
+    }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+    .bilibot-panel {
+        width: calc(100vw - 16px) !important;
+        right: 8px !important;
+    }
+}
+
+/* =============================================
+   MOBILE — BILIBot FAB + bottom spacing
+   Auth bar is handled by auth.js (fixed, body-level)
+   BILIBot FAB: bottom-right at 20px
+   Logout btn:  bottom-right at 80px (above FAB)
+   Content:     padding-bottom 140px so nothing hides
+   ============================================= */
+@media (max-width: 768px) {
+    main {
+        padding-bottom: 140px;
+    }
+    .bilibot-fab {
+        bottom: 20px !important;
+        right: 16px !important;
+    }
+    .bilibot-panel {
+        bottom: 88px !important;
+        right: 12px !important;
+        width: calc(100vw - 24px) !important;
+        max-height: 72vh !important;
+    }
+}
+@media (max-width: 380px) {
+    .bilibot-panel {
+        width: calc(100vw - 16px) !important;
+        right: 8px !important;
+    }
+}

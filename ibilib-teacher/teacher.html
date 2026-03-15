@@ -59,6 +59,7 @@
                 <a class="nav-link" onclick="loadResearch()">Research</a>
                 <a class="nav-link" onclick="loadMaterials()">Materials</a>
                 <a class="nav-link" onclick="loadPrompts()">Prompts</a>
+                <a class="nav-link nav-link-teacher" onclick="loadTeacherFiles()">Teacher Files</a>
             </div>
 
             <!-- Right: search + theme toggle + admin (desktop) -->
@@ -121,6 +122,7 @@
                 Materials</a>
             <a class="mob-link" onclick="loadPrompts(); toggleMobileMenu()"><i data-lucide="pen-line"></i> Writing
                 Prompts</a>
+            <a class="mob-link mob-link-teacher" onclick="loadTeacherFiles(); toggleMobileMenu()"><i data-lucide="folder-lock"></i> Teacher Files</a>
         </div>
     </nav>
 
@@ -184,7 +186,15 @@
                             <h3>Writing Prompts</h3>
                             <p>Task repository and creative writing tasks</p>
                         </div>
-                        <i data-lucide="arrow-right" class="card-arrow"></i>
+                        <i data-lucide="arrow-right" class="card-arrow amber-text"></i>
+                    </div>
+                    <div class="liquid-card liquid-card-teacher" onclick="loadTeacherFiles()">
+                        <div class="card-icon-wrap card-icon-teacher"><i data-lucide="folder-lock"></i></div>
+                        <div class="card-inner">
+                            <h3>Teacher Files <span class="teacher-badge">Private</span></h3>
+                            <p>Test papers (Grade 7–12) and Daily Lesson Logs</p>
+                        </div>
+                        <i data-lucide="arrow-right" class="card-arrow amber-text"></i>
                     </div>
                 </div>
             </div>
@@ -275,11 +285,14 @@
         <section id="viewer-page" class="hidden">
             <div class="viewer-nav">
                 <button class="btn-icon" onclick="closeViewer()"><i data-lucide="arrow-left"></i></button>
-                <span>Document Reader</span>
-                <div style="width:42px"></div>
+                <span id="viewer-filename" class="viewer-title">Document Reader</span>
+                <button class="btn-icon" onclick="directDownload(_viewerUrl, _viewerFilename)" title="Download">
+                    <i data-lucide="download"></i>
+                </button>
             </div>
-            <div class="pdf-wrapper">
-                <iframe id="pdf-frame" src=""></iframe>
+            <div class="pdf-wrapper" id="pdf-wrapper-inner">
+                <iframe id="pdf-frame" src="" allow="fullscreen"></iframe>
+                <div id="docx-viewer" style="display:none"></div>
             </div>
         </section>
 
@@ -454,6 +467,9 @@
                 </button>
                 <button type="button" class="cat-btn" data-cat="prompts" onclick="selectCat(this)">
                     <i data-lucide="pen-line"></i> Prompts
+                </button>
+                <button type="button" class="cat-btn cat-btn-teacher" data-cat="teacher-files" onclick="selectCat(this)">
+                    <i data-lucide="folder-lock"></i> Teacher Files
                 </button>
             </div>
         </div>

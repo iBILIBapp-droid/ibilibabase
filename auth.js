@@ -38,20 +38,7 @@ const _LOGIN   = '../index.html';
   /* ── Inject styles ── */
   const style = document.createElement('style');
   style.textContent = `
-    #_auth-bar {
-      position: fixed;
-      top: 14px;
-      right: 16px;
-      z-index: 99999;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      animation: _authIn 0.4s cubic-bezier(0.22,1,0.36,1) both;
-    }
-    @keyframes _authIn {
-      from { opacity:0; transform:translateY(-10px); }
-      to   { opacity:1; transform:translateY(0); }
-    }
+    /* ── User pill ── */
     #_user-pill {
       display: flex;
       align-items: center;
@@ -82,6 +69,7 @@ const _LOGIN   = '../index.html';
       color: #fff; flex-shrink: 0;
       letter-spacing: 0.5px;
     }
+    /* ── Logout button ── */
     #_logout-btn {
       display: flex;
       align-items: center;
@@ -101,15 +89,11 @@ const _LOGIN   = '../index.html';
       transition: background 0.2s, border-color 0.2s, transform 0.15s;
       white-space: nowrap;
     }
-    #_logout-btn:hover {
-      background: rgba(248,113,113,0.22);
-      border-color: rgba(248,113,113,0.5);
-      transform: translateY(-1px);
-    }
+    #_logout-btn:hover { background: rgba(248,113,113,0.22); border-color: rgba(248,113,113,0.5); transform: translateY(-1px); }
     #_logout-btn:active { transform: translateY(0); }
     #_logout-btn svg { flex-shrink: 0; }
 
-    /* Auth bar lives inline inside .nav-inner — no fixed positioning needed */
+    /* ── DESKTOP (>768px): inline in navbar row ── */
     #_auth-bar {
       display: flex;
       align-items: center;
@@ -121,14 +105,41 @@ const _LOGIN   = '../index.html';
       from { opacity:0; transform:translateY(-6px); }
       to   { opacity:1; transform:translateY(0); }
     }
-    @keyframes _authSpin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes _authSpin { to { transform: rotate(360deg); } }
 
-    /* Mobile: hide name pill, shrink logout button */
+    /* ── MOBILE (<=768px): fixed icon-only button, bottom-right corner ──
+       Sits ABOVE the BILIBot FAB which is also bottom-right.
+       BILIBot FAB = bottom 20px, so logout sits at bottom 80px.        */
     @media (max-width: 768px) {
-      #_user-pill { display: none !important; }
-      #_logout-btn { font-size: 12px !important; padding: 6px 10px !important; }
+      #_auth-bar {
+        position: fixed;
+        bottom: 80px;
+        right: 16px;
+        top: auto;
+        left: auto;
+        z-index: 9989;
+        gap: 0;
+      }
+      #_user-pill { display: none; }
+      #_logout-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        font-size: 0;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      }
+      #_logout-btn svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+      /* Hide the "Logout" text on mobile — icon only */
+      #_logout-btn span { display: none; }
     }
   `;
   document.head.appendChild(style);
@@ -170,12 +181,21 @@ const _LOGIN   = '../index.html';
     </button>
   `;
   /* Append auth bar into the navbar so it flows naturally in the layout */
-  const navInner = document.querySelector('.nav-inner');
-  if (navInner) {
-    navInner.appendChild(bar);
-  } else {
+  /* On desktop: inject into navbar for inline flow.
+     On mobile:   inject into body for fixed positioning. */
+  function _mountAuthBar() {
+    if (window.innerWidth > 768) {
+      var navInner = document.querySelector('.nav-inner');
+      if (navInner) { navInner.appendChild(bar); return; }
+    }
     document.body.appendChild(bar);
   }
+  _mountAuthBar();
+  /* Re-mount on resize so it moves between contexts */
+  window.addEventListener('resize', function() {
+    if (bar.parentNode) bar.parentNode.removeChild(bar);
+    _mountAuthBar();
+  });
 
   /* ── Logout handler ── */
   let _loggingOut = false;
