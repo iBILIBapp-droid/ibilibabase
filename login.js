@@ -81,6 +81,8 @@ async function redirectByRole(user) {
 let authListenerReady = false;
 sb.auth.onAuthStateChange(async (event, session) => {
   if (!authListenerReady) { authListenerReady = true; return; }
+  // Never auto-redirect on PASSWORD_RECOVERY — that belongs on update-password.html
+  if (event === 'PASSWORD_RECOVERY') return;
   if (event === 'SIGNED_IN' && session && !redirecting) {
     await redirectByRole(session.user);
   }
@@ -92,8 +94,22 @@ setTimeout(() => { authListenerReady = true; }, 100);
    If the user visits the login page while
    already having a valid session, skip the
    form and send them straight to their app.
+   SKIP if this is a password recovery link
+   (type=recovery in the URL hash) — those
+   should land on update-password.html only.
 ══════════════════════════════════════ */
 (async () => {
+  // If the URL hash contains a recovery token, redirect to update-password.html
+  // instead of auto-logging in. This happens when Supabase appends the token
+  // to the login page URL instead of directly hitting update-password.html.
+  const hash = window.location.hash;
+  if (hash.includes('type=recovery')) {
+    _fadeOut(() => {
+      window.location.replace('./update-password.html' + hash);
+    });
+    return;
+  }
+
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await redirectByRole(session.user);

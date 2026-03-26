@@ -177,15 +177,17 @@ async function crawlAll(prefix, results = [], orgUrl = SB_URL_ORG1, orgKey = SB_
 }
 
 // ─── Navigate into a folder ───────────────────────────────
-// orgUrl / orgKey default to Org 1; pass Org 2 constants to target the second project.
+// Recursively drills through subfolders until it finds files to display.
+// If a level has both folders AND files, folders are shown as navigation cards
+// and a "Files in this folder" section is shown below them.
 async function smartNavigate(path, title, orgUrl = SB_URL_ORG1, orgKey = SB_KEY_ORG1) {
     const container = document.getElementById('category-container');
     const browserContainer = document.getElementById('browser-container');
 
     currentPath = path;
-    // Set root scope from first segment
     currentRootScope = path.split('/')[0];
 
+    // Show skeleton while loading
     let skeletonHTML = '';
     for (let i = 0; i < 6; i++) {
         skeletonHTML += `<div class="liquid-card skeleton-card animate-pulse" style="opacity:1; animation-delay: ${i * 0.1}s">
@@ -205,23 +207,10 @@ async function smartNavigate(path, title, orgUrl = SB_URL_ORG1, orgKey = SB_KEY_
     try {
         const items = await listPath(path, orgUrl, orgKey);
         const folders = items.filter(i => !i.id && i.name !== '.emptyFolderPlaceholder');
-        const files = items.filter(i => i.id && i.name !== '.emptyFolderPlaceholder');
+        const files   = items.filter(i =>  i.id && i.name !== '.emptyFolderPlaceholder');
 
-        if (folders.length > 0) {
-            container.innerHTML = "";
-            folders.forEach((f, i) => {
-                const div = document.createElement('div');
-                div.className = "liquid-card animate-tile";
-                div.style.animationDelay = `${i * 0.08}s`;
-                div.onclick = () => smartNavigate(`${path}/${f.name}`, f.name, orgUrl, orgKey);
-                div.innerHTML = `
-                    <div class="card-icon-wrap"><i data-lucide="folder"></i></div>
-                    <div class="card-inner"><h3>${f.name}</h3><p>Folder</p></div>
-                    <i data-lucide="arrow-right" class="card-arrow purple-text"></i>`;
-                container.appendChild(div);
-            });
-            document.getElementById('category-back-btn').onclick = () => handleBack(path, orgUrl, orgKey);
-        } else {
+        // ── Case 1: Only files here — go straight to browser ──────────────────
+        if (folders.length === 0 && files.length > 0) {
             currentFiles = files.map(f => ({
                 name: f.name,
                 fullPath: `${path}/${f.name}`,
@@ -233,8 +222,79 @@ async function smartNavigate(path, title, orgUrl = SB_URL_ORG1, orgKey = SB_KEY_
             document.getElementById('browser-title').innerText = title;
             renderFileObjects(currentFiles, browserContainer);
             document.getElementById('browser-back-btn').onclick = () => handleBack(path, orgUrl, orgKey);
+            lucide.createIcons();
+            return;
         }
+
+        // ── Case 2: Folder is completely empty — go up or show message ────────
+        if (folders.length === 0 && files.length === 0) {
+            // Try going up one level to avoid dead end; if we're at root, show empty
+            const parts = path.split('/');
+            if (parts.length > 1) {
+                parts.pop();
+                const parentPath  = parts.join('/');
+                const parentTitle = parts[parts.length - 1] || 'Back';
+                smartNavigate(parentPath, parentTitle, orgUrl, orgKey);
+            } else {
+                container.innerHTML = `<div class="liquid-card" style="opacity:1">
+                    <div class="card-icon-wrap"><i data-lucide="inbox"></i></div>
+                    <div class="card-inner"><h3>Empty Folder</h3><p>No files found in this folder</p></div>
+                </div>`;
+                document.getElementById('category-back-btn').onclick = () => handleBack(path, orgUrl, orgKey);
+                lucide.createIcons();
+            }
+            return;
+        }
+
+        // ── Case 3: Has subfolders (and possibly files too) — show folder cards ─
+        container.innerHTML = '';
+
+        folders.forEach((f, i) => {
+            const div = document.createElement('div');
+            div.className = 'liquid-card animate-tile';
+            div.style.animationDelay = `${i * 0.08}s`;
+            div.onclick = () => smartNavigate(`${path}/${f.name}`, f.name, orgUrl, orgKey);
+            div.innerHTML = `
+                <div class="card-icon-wrap"><i data-lucide="folder"></i></div>
+                <div class="card-inner"><h3>${f.name}</h3><p>Folder</p></div>
+                <i data-lucide="arrow-right" class="card-arrow purple-text"></i>`;
+            container.appendChild(div);
+        });
+
+        // If there are also files directly in this folder, render them below the folder cards
+        if (files.length > 0) {
+            const divider = document.createElement('div');
+            divider.className = 'browser-section-label';
+            divider.style.cssText = 'width:100%;padding:12px 4px 6px;font-size:12px;font-weight:600;color:var(--text-sub);letter-spacing:0.5px;text-transform:uppercase;';
+            divider.textContent = 'Files in this folder';
+            container.appendChild(divider);
+
+            files.forEach((f, i) => {
+                const fileOrgUrl = orgUrl;
+                const baseUrl    = `${fileOrgUrl}/storage/v1/object/public/archives/${path}/${f.name}`;
+                const div = document.createElement('div');
+                div.className = 'liquid-card animate-tile';
+                div.style.animationDelay = `${(folders.length + i) * 0.08}s`;
+                div.dataset.filename = f.name;
+                div.innerHTML = `
+                    <div class="card-icon-wrap"><i data-lucide="file-text"></i></div>
+                    <div class="card-inner">
+                        <h3>${f.name.replace(/_/g, ' ')}</h3>
+                        <p>${formatSize(f.metadata?.size)}</p>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-shrink:0">
+                        <button class="btn-icon" title="Download" onclick="event.stopPropagation(); directDownload('${baseUrl}', '${f.name}')">
+                            <i data-lucide="download"></i>
+                        </button>
+                        <button class="btn-purple-action" onclick="event.stopPropagation(); openViewer('${baseUrl}', '${f.name}')">View</button>
+                    </div>`;
+                container.appendChild(div);
+            });
+        }
+
+        document.getElementById('category-back-btn').onclick = () => handleBack(path, orgUrl, orgKey);
         lucide.createIcons();
+
     } catch (e) {
         container.innerHTML = `<div class="liquid-card" style="opacity:1">
             <div class="card-icon-wrap"><i data-lucide="wifi-off"></i></div>
