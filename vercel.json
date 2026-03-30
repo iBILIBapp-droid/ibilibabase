@@ -1,0 +1,37 @@
+{
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/student",
+      "destination": "/student.html"
+    },
+    {
+      "source": "/teacher",
+      "destination": "/teacher.html"
+    },
+    {
+      "source": "/update-password",
+      "destination": "/update-password.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ]
+}
