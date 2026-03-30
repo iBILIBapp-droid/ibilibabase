@@ -35,7 +35,7 @@ const _SB = supabase.createClient(
 function _blocked(msg) {
     const gs = document.getElementById('_gs');
     gs.classList.add('blocked');
-    gs.innerHTML = `<div class="_gbi"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="_gbt">Access Denied</div><div class="_gbs">${msg}</div><button class="_gbb" onclick="_fadeOut(()=>window.location.replace('../index.html'))">← Go to Login</button>`;
+    gs.innerHTML = `<div class="_gbi"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="_gbt">Access Denied</div><div class="_gbs">${msg}</div><button class="_gbb" onclick="_fadeOut(()=>window.location.replace('./index.html'))">← Go to Login</button>`;
     requestAnimationFrame(() => { document.documentElement.style.opacity = '1'; });
 }
 
@@ -62,14 +62,14 @@ let _userRole = 'unknown';
     const { data: { session } } = await _SB.auth.getSession();
     if (!session) {
         sessionStorage.setItem('bypass_attempt', '1');
-        _fadeOut(() => window.location.replace('../index.html'));
+        _fadeOut(() => window.location.replace('./index.html'));
         return;
     }
 
     _userRole = await _getRole(session.user);
     if (_userRole !== 'teacher' && _userRole !== 'private') {
         /* Redirect students back to their page instead of showing blank screen */
-        _fadeOut(() => window.location.replace('../index.html'));
+        _fadeOut(() => window.location.replace('./index.html'));
         return;
     }
 

@@ -15,7 +15,7 @@
             }
         })();
     </script>
-    <link rel="stylesheet" href="/ibilib-teacher/teacher.css">
+    <link rel="stylesheet" href="./ibilib-teacher/teacher.css">
 </head>
 
 <body>
@@ -116,7 +116,7 @@
             </div>
             <div class="hero-grid" aria-hidden="true"></div>
             <div class="hero">
-                <div class="hero-visual"><img src="/ibilib-teacher/image/hero.webp" alt="iBilib Archive"></div>
+                <div class="hero-visual"><img src="./ibilib-teacher/image/hero.webp" alt="iBilib Archive"></div>
                 <h1>Access Your <span class="amber-highlight">Learning</span> Resources</h1>
                 <p>Explore the Aringay NHS digital archive — research studies, learning materials, and writing prompts,
                     all in one place.</p>
@@ -247,11 +247,11 @@
     </script>
 
     <!-- Teacher portal script (handles its own auth guard + all app logic) -->
-    <script src="/ibilib-teacher/teacher.js"></script>
+    <script src="./ibilib-teacher/teacher.js"></script>
 
     <!-- BILIBot FAB -->
     <button class="bilibot-fab" id="bilibot-fab" onclick="toggleBiliBot()" aria-label="Open BILIBot">
-        <span class="bilibot-fab-icon" id="bilibot-fab-icon"><img src="/ibilib-teacher/image/BILIBot.png" alt="BILIBot"
+        <span class="bilibot-fab-icon" id="bilibot-fab-icon"><img src="./ibilib-teacher/image/BILIBot.png" alt="BILIBot"
                 style="width:36px;height:36px;object-fit:cover;border-radius:50%;"></span>
         <span class="bilibot-fab-close" id="bilibot-fab-close"><i data-lucide="x"></i></span>
         <span class="bilibot-notif" id="bilibot-notif"></span>
@@ -259,7 +259,7 @@
     <div class="bilibot-panel hidden" id="bilibot-panel">
         <div class="bilibot-header">
             <div class="bilibot-header-left">
-                <div class="bilibot-avatar"><img src="/ibilib-teacher/image/BILIBot.png" alt="BILIBot"
+                <div class="bilibot-avatar"><img src="./ibilib-teacher/image/BILIBot.png" alt="BILIBot"
                         style="width:100%;height:100%;object-fit:cover;border-radius:8px;"></div>
                 <div>
                     <div class="bilibot-name">BILIBot</div>
@@ -270,7 +270,7 @@
         </div>
         <div class="bilibot-messages" id="bilibot-messages">
             <div class="bilibot-msg bot">
-                <div class="bilibot-msg-avatar"><img src="/ibilib-teacher/image/BILIBot.png" alt="BILIBot"
+                <div class="bilibot-msg-avatar"><img src="./ibilib-teacher/image/BILIBot.png" alt="BILIBot"
                         style="width:100%;height:100%;object-fit:cover;border-radius:6px;"></div>
                 <div class="bilibot-bubble">Hi! I'm <strong>BILIBot</strong> — your AI assistant for iBilib.</div>
             </div>
@@ -347,7 +347,7 @@
 
     <!-- Vite TypeScript module entry — adds AuthBar + AccountManager on top of teacher.js -->
     <!-- guardSession() is skipped here since teacher.js already handles auth redirect -->
-    <script type="module" src="/src/pages/teacher/authbar-only.ts"></script>
+    <script type="module" src="./src/pages/teacher/authbar-only.ts"></script>
 </body>
 
 </html>

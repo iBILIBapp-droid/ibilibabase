@@ -62,7 +62,7 @@ async function _getRole(user) {
 
 (async () => {
     const { data: { session } } = await _SB.auth.getSession();
-    if (!session) { window.location.replace('../index.html'); return; }
+    if (!session) { window.location.replace('./index.html'); return; }
 
     const role = await _getRole(session.user);
     if (role === 'teacher' || role === 'private') {

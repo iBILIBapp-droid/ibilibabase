@@ -13,10 +13,10 @@ import type { UserRole } from '@/types';
 
 // ── Page routes ──────────────────────────────────────────────
 export const ROUTES = {
-    login: '/index.html',
-    student: '/student.html',
-    teacher: '/teacher.html',
-    updatePassword: '/update-password.html',
+    login: './index.html',
+    student: './student.html',
+    teacher: './teacher.html',
+    updatePassword: './update-password.html',
 } as const;
 
 // ── Smooth fade-out transition ───────────────────────────────

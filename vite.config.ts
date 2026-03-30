@@ -6,19 +6,16 @@ export default defineConfig({
     build: {
         rollupOptions: {
             input: {
-                // Login page (root entry)
                 main: resolve(__dirname, 'index.html'),
-                // Student portal
                 student: resolve(__dirname, 'student.html'),
-                // Teacher portal
                 teacher: resolve(__dirname, 'teacher.html'),
-                // Password update
                 updatePassword: resolve(__dirname, 'update-password.html'),
             },
         },
         outDir: 'dist',
         emptyOutDir: true,
     },
+    base: './',
     resolve: {
         alias: {
             '@': resolve(__dirname, 'src'),
