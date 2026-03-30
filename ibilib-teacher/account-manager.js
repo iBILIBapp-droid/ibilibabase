@@ -176,14 +176,15 @@
   </div>`);
 
   /* ── Navbar button — only shown to private role ─────────── */
-  async function _checkPrivateRole() {
+  async function _checkTeacherPrivilege() {
     try {
       const sb = (typeof _SB !== 'undefined') ? _SB : null;
       if (!sb) return false;
       const { data: { session } } = await sb.auth.getSession();
       if (!session) return false;
       const { data } = await sb.from('profiles').select('role').eq('id', session.user.id).single();
-      return (data?.role || '').toLowerCase() === 'private';
+      const role = (data?.role || '').toLowerCase();
+      return role === 'teacher' || role === 'private';
     } catch { return false; }
   }
 
@@ -214,16 +215,16 @@
       check();
     });
     await waitReady();
-    const isPrivate = await _checkPrivateRole();
-    if (isPrivate) _mountBtn();
+    const isAllowed = await _checkTeacherPrivilege();
+    if (isAllowed) _mountBtn();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _init);
   else _init();
 
   /* ── Open / Close ────────────────────────────────────────── */
   window.amOpen = async function () {
-    const isPrivate = await _checkPrivateRole();
-    if (!isPrivate) return; /* silently block non-private roles */
+    const isAllowed = await _checkTeacherPrivilege();
+    if (!isAllowed) return; /* silently block non-allowed roles */
     document.getElementById('am-overlay').classList.add('am-open');
     document.body.style.overflow = 'hidden';
     amLoad();

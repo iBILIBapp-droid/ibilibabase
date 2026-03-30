@@ -171,13 +171,14 @@ function injectHTML(): void {
   </div>`);
 }
 
-// ── Check if current user has 'private' role ─────────────────
-async function checkPrivateRole(): Promise<boolean> {
+// ── Check if current user has permission (teacher or private) ──
+async function checkTeacherPrivilege(): Promise<boolean> {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return false;
     const { data } = await sb.from('profiles').select('role').eq('id', session.user.id).single();
-    return (data?.role ?? '').toLowerCase() === 'private';
+    const role = (data?.role ?? '').toLowerCase();
+    return role === 'teacher' || role === 'private';
   } catch { return false; }
 }
 
@@ -217,8 +218,8 @@ function mountNavBtn(): void {
 
 // ── Open / Close ─────────────────────────────────────────────
 async function open(): Promise<void> {
-  const isPrivate = await checkPrivateRole();
-  if (!isPrivate) return;
+  const isAllowed = await checkTeacherPrivilege();
+  if (!isAllowed) return;
   document.getElementById('am-overlay')?.classList.add('am-open');
   document.body.style.overflow = 'hidden';
   void load();
@@ -467,7 +468,7 @@ export async function initAccountManager(): Promise<void> {
     close();
   });
 
-  // Check if current user has private role, then mount nav button
-  const isPrivate = await checkPrivateRole();
-  if (isPrivate) mountNavBtn();
+  // Check if current user has teacher/private role, then mount nav button
+  const isAllowed = await checkTeacherPrivilege();
+  if (isAllowed) mountNavBtn();
 }

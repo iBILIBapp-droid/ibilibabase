@@ -137,6 +137,18 @@ function showPage(p) {
     // Update active nav link
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
     if (p === 'home') document.querySelector('.nav-link')?.classList.add('active');
+    else {
+        const links = document.querySelectorAll('.nav-link');
+        if (p === 'category' || p === 'browser') {
+            const title = document.getElementById('category-page-title')?.innerText || '';
+            links.forEach(l => {
+                const txt = l.innerText.trim();
+                if (title.includes(txt) || (txt === 'Teacher Files' && currentRootScope === 'teacher-files')) {
+                    l.classList.add('active');
+                }
+            });
+        }
+    }
     if (window.lucide) lucide.createIcons();
 }
 

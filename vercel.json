@@ -4,11 +4,11 @@
   "rewrites": [
     {
       "source": "/student",
-      "destination": "/student.html"
+      "destination": "/ibilib/student.html"
     },
     {
       "source": "/teacher",
-      "destination": "/teacher.html"
+      "destination": "/ibilib-teacher/teacher.html"
     },
     {
       "source": "/update-password",

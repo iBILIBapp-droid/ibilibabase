@@ -1,0 +1,1 @@
+import{a as e,o as t,r as n,t as r}from"./auth-wBsPwwBl.js";import{t as i}from"./AuthBar-C8zcQkEm.js";(async()=>{try{let{data:{session:a}}=await t.auth.getSession();if(!a)return;i(a.user),e(()=>n(()=>window.location.replace(r.login)))}catch{}})();
