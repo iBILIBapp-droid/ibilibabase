@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>iBilib | Digital Archive</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        (function () {
+            if (localStorage.getItem('ibiblib-theme') === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="student.css">
+</head>
+
+<body>
+
+    <!-- LOADING INTRO -->
+    <div id="intro-screen">
+        <div class="intro-orb"></div>
+        <div class="intro-content">
+            <div class="intro-logo-wrap">
+                <div class="intro-logo-icon">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                </div>
+                <span class="intro-logo-text">iBilib</span>
+            </div>
+            <p class="intro-tagline">Digital Archive</p>
+            <div class="intro-bar-wrap">
+                <div class="intro-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVBAR -->
+    <nav class="navbar" id="main-navbar">
+        <div class="nav-inner">
+            <div class="logo" onclick="showPage('home')">
+                <div class="logo-icon"><i data-lucide="layout-grid"></i></div>
+                <span>iBilib</span>
+            </div>
+            <div class="nav-links">
+                <a class="nav-link active" onclick="showPage('home')">Home</a>
+                <a class="nav-link" onclick="loadResearch()">Research</a>
+                <a class="nav-link" onclick="loadMaterials()">Materials</a>
+                <a class="nav-link" onclick="loadPrompts()">Prompts</a>
+            </div>
+            <div class="nav-right">
+                <div class="search-wrap">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="search-input" class="search-input" placeholder="Search…"
+                        oninput="handleSearch(this.value)" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="nav-actions" id="nav-actions">
+                    <button class="action-btn theme-toggle" id="theme-toggle" onclick="toggleTheme()"
+                        title="Toggle theme" aria-label="Toggle theme">
+                        <i data-lucide="moon" class="theme-icon-moon"></i>
+                        <i data-lucide="sun" class="theme-icon-sun" style="display:none"></i>
+                    </button>
+                    <!-- AuthBar will mount here -->
+                </div>
+            </div>
+            <div class="nav-mobile-right">
+                <button class="action-btn" onclick="toggleTheme()" title="Toggle theme"><i
+                        data-lucide="moon"></i></button>
+                <button class="action-btn" onclick="toggleMobileMenu()"><i data-lucide="menu"></i></button>
+            </div>
+        </div>
+        <div class="nav-mobile-search-row">
+            <div class="search-wrap">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="text" id="search-input-mobile" class="search-input" placeholder="Search resources…"
+                    oninput="handleSearch(this.value)" autocomplete="off" spellcheck="false">
+            </div>
+        </div>
+        <div class="mobile-menu hidden" id="mobile-menu">
+            <a class="mob-link" onclick="showPage('home'); toggleMobileMenu()"><i data-lucide="home"></i>Home</a>
+            <a class="mob-link" onclick="loadResearch(); toggleMobileMenu()"><i data-lucide="book-open"></i>Research
+                Studies</a>
+            <a class="mob-link" onclick="loadMaterials(); toggleMobileMenu()"><i data-lucide="layers"></i>Learning
+                Materials</a>
+            <a class="mob-link" onclick="loadPrompts(); toggleMobileMenu()"><i data-lucide="pen-line"></i>Writing
+                Prompts</a>
+        </div>
+    </nav>
+
+    <main>
+
+        <!-- HOME PAGE -->
+        <section id="home-page">
+            <div class="hero-orb"></div>
+            <div class="hero-rings" aria-hidden="true">
+                <div class="ring ring1"></div>
+                <div class="ring ring2"></div>
+                <div class="ring ring3"></div>
+            </div>
+            <div class="hero-grid" aria-hidden="true"></div>
+
+            <div class="hero">
+                <div class="hero-visual"><img src="image/hero.webp" alt="iBilib Archive"></div>
+                <h1>Access Your <span class="amber-highlight">Learning</span> Resources</h1>
+                <p>Explore the Aringay NHS digital archive — research studies, learning materials, and writing prompts,
+                    all in one place.</p>
+                <div class="hero-cta">
+                    <button class="btn-cta-primary" onclick="loadResearch()">
+                        <i data-lucide="book-open"></i> Browse Archive
+                    </button>
+                    <button class="btn-cta-ghost" onclick="loadMaterials()">
+                        <i data-lucide="layers"></i> View Materials
+                    </button>
+                </div>
+                <div class="hero-logos">
+                    <span>Research</span><span class="hero-dot"></span>
+                    <span>Materials</span><span class="hero-dot"></span>
+                    <span>Prompts</span><span class="hero-dot"></span>
+                    <span>Aringay NHS</span>
+                </div>
+            </div>
+
+            <div class="cards-section">
+                <div class="section-label">Browse by Category</div>
+                <div class="category-stack">
+                    <div class="liquid-card" onclick="loadResearch()">
+                        <div class="card-icon-wrap"><i data-lucide="book-open"></i></div>
+                        <div class="card-inner">
+                            <h3>Research Studies</h3>
+                            <p>Student research archives and scientific papers</p>
+                        </div>
+                        <i data-lucide="arrow-right" class="card-arrow"></i>
+                    </div>
+                    <div class="liquid-card" onclick="loadMaterials()">
+                        <div class="card-icon-wrap"><i data-lucide="layers"></i></div>
+                        <div class="card-inner">
+                            <h3>Learning Materials</h3>
+                            <p>Modules, guides, and study resources</p>
+                        </div>
+                        <i data-lucide="arrow-right" class="card-arrow"></i>
+                    </div>
+                    <div class="liquid-card" onclick="loadPrompts()">
+                        <div class="card-icon-wrap"><i data-lucide="pen-line"></i></div>
+                        <div class="card-inner">
+                            <h3>Writing Prompts</h3>
+                            <p>Task repository and creative writing tasks</p>
+                        </div>
+                        <i data-lucide="arrow-right" class="card-arrow"></i>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="site-credits">
+                <div class="credits-inner">
+                    <div class="credits-logo">
+                        <div class="credits-logo-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white"
+                                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7" rx="1" />
+                                <rect x="14" y="3" width="7" height="7" rx="1" />
+                                <rect x="3" y="14" width="7" height="7" rx="1" />
+                                <rect x="14" y="14" width="7" height="7" rx="1" />
+                            </svg>
+                        </div>
+                        <span>iBilib</span>
+                    </div>
+                    <p class="credits-tagline">Digital Archive of Aringay National High School</p>
+                    <div class="credits-divider"></div>
+                    <div class="credits-row">
+                        <div class="credits-block"><span class="credits-label">Developed by</span><span
+                                class="credits-value">iBilib Dev Team</span></div>
+                        <div class="credits-dot"></div>
+                        <div class="credits-block"><span class="credits-label">School</span><span
+                                class="credits-value">Aringay NHS</span></div>
+                        <div class="credits-dot"></div>
+                        <div class="credits-block"><span class="credits-label">AI Assistant</span><span
+                                class="credits-value">BILIBot · Powered by Groq</span></div>
+                    </div>
+                    <div class="credits-divider"></div>
+                    <p class="credits-ai-label">Built with the help of AI</p>
+                    <div class="credits-ai-row">
+                        <div class="credits-ai-badge claude">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M12 8v4l3 3" />
+                            </svg>
+                            Claude <span>by Anthropic</span>
+                        </div>
+                        <div class="credits-ai-badge gemini">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon
+                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                            Gemini <span>by Google</span>
+                        </div>
+                    </div>
+                    <p class="credits-copy">&copy; 2025 iBilib &middot; All rights reserved &middot; Built with care for
+                        students and teachers</p>
+                </div>
+            </footer>
+        </section>
+
+        <!-- CATEGORY PAGE -->
+        <section id="category-page" class="hidden">
+            <div class="inner-page-wrap">
+                <div class="hero-mini">
+                    <button class="btn-icon" id="category-back-btn"><i data-lucide="arrow-left"></i></button>
+                    <h2 id="category-page-title">Folders</h2>
+                </div>
+                <div id="category-container" class="category-stack"></div>
+            </div>
+        </section>
+
+        <!-- BROWSER PAGE -->
+        <section id="browser-page" class="hidden">
+            <div class="inner-page-wrap">
+                <div class="hero-mini">
+                    <button class="btn-icon" id="browser-back-btn"><i data-lucide="arrow-left"></i></button>
+                    <h2 id="browser-title">Files</h2>
+                </div>
+                <div id="browser-container" class="category-stack"></div>
+            </div>
+        </section>
+
+        <!-- VIEWER PAGE -->
+        <section id="viewer-page" class="hidden">
+            <div class="viewer-nav">
+                <button class="btn-icon" onclick="closeViewer()"><i data-lucide="arrow-left"></i></button>
+                <span id="viewer-filename" class="viewer-title">Document Reader</span>
+                <button class="btn-icon" onclick="directDownload(_viewerUrl, _viewerFilename)" title="Download">
+                    <i data-lucide="download"></i>
+                </button>
+            </div>
+            <div class="pdf-wrapper" id="pdf-wrapper-inner">
+                <iframe id="pdf-frame" src="" allow="fullscreen"></iframe>
+                <div id="docx-viewer" style="display:none"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../auth.js"></script>
+    <script src="student.js"></script>
+
+    <!-- BILIBOT -->
+    <button class="bilibot-fab" id="bilibot-fab" onclick="toggleBiliBot()" aria-label="Open BILIBot">
+        <span class="bilibot-fab-icon" id="bilibot-fab-icon">
+            <img src="image/BILIBot.png" alt="BILIBot"
+                style="width:36px;height:36px;object-fit:cover;border-radius:50%;">
+        </span>
+        <span class="bilibot-fab-close" id="bilibot-fab-close">
+            <i data-lucide="x"></i>
+        </span>
+        <span class="bilibot-notif" id="bilibot-notif"></span>
+    </button>
+
+    <div class="bilibot-panel hidden" id="bilibot-panel">
+        <div class="bilibot-header">
+            <div class="bilibot-header-left">
+                <div class="bilibot-avatar">
+                    <img src="image/BILIBot.png" alt="BILIBot"
+                        style="width:100%;height:100%;object-fit:cover;border-radius:8px;">
+                </div>
+                <div>
+                    <div class="bilibot-name">BILIBot</div>
+                    <div class="bilibot-status"><span class="bilibot-dot"></span>Online</div>
+                </div>
+            </div>
+            <button class="bilibot-header-close" onclick="toggleBiliBot()"><i data-lucide="x"></i></button>
+        </div>
+
+        <div class="bilibot-messages" id="bilibot-messages">
+            <div class="bilibot-msg bot">
+                <div class="bilibot-msg-avatar">
+                    <img src="image/BILIBot.png" alt="BILIBot"
+                        style="width:100%;height:100%;object-fit:cover;border-radius:6px;">
+                </div>
+                <div class="bilibot-bubble">
+                    Hi! I'm <strong>BILIBot</strong> — your AI assistant for iBilib. Ask me anything about research,
+                    learning materials, writing prompts, or anything you need help with.
+                </div>
+            </div>
+        </div>
+
+        <div class="bilibot-suggestions" id="bilibot-suggestions">
+            <button onclick="sendSuggestion(this)">What research topics are available?</button>
+            <button onclick="sendSuggestion(this)">Help me with a writing prompt</button>
+            <button onclick="sendSuggestion(this)">What is iBilib?</button>
+        </div>
+
+        <div class="bilibot-file-pills hidden" id="bilibot-file-pills"></div>
+
+        <div class="bilibot-mode-bar" id="bilibot-mode-bar">
+            <button class="bilibot-mode-btn" id="mode-deep" onclick="setBiliBotMode('deep')" title="Deep thinking">
+                <i data-lucide="brain"></i> Deep
+            </button>
+            <button class="bilibot-mode-btn active" id="mode-fast" onclick="setBiliBotMode('fast')"
+                title="Fast answers">
+                <i data-lucide="zap"></i> Fast
+            </button>
+        </div>
+
+        <div class="bilibot-input-row">
+            <input type="file" id="bilibot-file-input" multiple accept=".txt,.pdf,.doc,.docx,.csv,.md,.html"
+                style="display:none" onchange="biliBotHandleFiles(this.files)">
+            <button class="bilibot-attach-btn" id="bilibot-attach-btn" onclick="biliBotPickFiles()"
+                title="Attach up to 3 files">
+                <i data-lucide="paperclip"></i>
+            </button>
+            <input type="text" id="bilibot-input" placeholder="Ask BILIBot anything…" autocomplete="off"
+                spellcheck="false" onkeydown="if(event.key==='Enter') sendBiliBot()">
+            <button class="bilibot-send" onclick="sendBiliBot()" id="bilibot-send-btn">
+                <i data-lucide="send"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ADMIN LOGIN MODAL -->
+    <div id="admin-modal" class="modal-overlay hidden">
+        <div class="modal-box" id="admin-login-box">
+            <button class="modal-close" onclick="closeAdmin()"><i data-lucide="x"></i></button>
+            <div class="modal-logo">
+                <div class="modal-logo-icon"><i data-lucide="shield-check"></i></div>
+            </div>
+            <h2 class="modal-title">Admin Access</h2>
+            <p class="modal-sub">Enter your credentials to continue</p>
+            <form class="modal-form" onsubmit="submitLogin(event)">
+                <div class="field-wrap" id="field-username">
+                    <label>Username</label>
+                    <div class="input-wrap">
+                        <i data-lucide="user" class="input-icon"></i>
+                        <input type="text" id="login-user" placeholder="root" autocomplete="off" spellcheck="false">
+                    </div>
+                </div>
+                <div class="field-wrap" id="field-password">
+                    <label>Password</label>
+                    <div class="input-wrap">
+                        <i data-lucide="lock" class="input-icon"></i>
+                        <input type="password" id="login-pass"
+                            placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;">
+                        <button type="button" class="toggle-pass" onclick="togglePass()">
+                            <i data-lucide="eye" id="pass-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="login-error hidden" id="login-error">
+                    <i data-lucide="alert-circle"></i>
+                    <span id="login-error-msg">Invalid credentials</span>
+                </div>
+                <button type="submit" class="btn-cta-primary modal-submit" id="login-btn">
+                    <span>Sign In</span><i data-lucide="arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADMIN UPLOAD PANEL -->
+    <div id="admin-panel" class="modal-overlay hidden">
+        <div class="modal-box upload-box">
+            <div class="upload-header">
+                <div class="upload-header-left">
+                    <div class="modal-logo-icon small"><i data-lucide="upload-cloud"></i></div>
+                    <div>
+                        <h2 class="modal-title" style="margin:0">Upload Files</h2>
+                        <p class="modal-sub" style="margin:0">Max 10 files per session</p>
+                    </div>
+                </div>
+                <button class="modal-close static" onclick="closeAdminPanel()"><i data-lucide="x"></i></button>
+            </div>
+            <div class="field-wrap">
+                <label>Upload to Category</label>
+                <div class="cat-picker">
+                    <button type="button" class="cat-btn active" data-cat="research" onclick="selectCat(this)">
+                        <i data-lucide="book-open"></i> Research
+                    </button>
+                    <button type="button" class="cat-btn" data-cat="prompts" onclick="selectCat(this)">
+                        <i data-lucide="pen-line"></i> Prompts
+                    </button>
+                </div>
+            </div>
+            <div class="field-wrap" id="subfolder-wrap">
+                <label>Subfolder <span class="label-hint" id="subfolder-hint">Loading folders…</span></label>
+                <div class="subfolder-select-wrap">
+                    <div class="input-wrap" style="flex:1">
+                        <i data-lucide="folder" class="input-icon"></i>
+                        <select id="upload-subfolder-select" onchange="onSubfolderSelect(this)">
+                            <option value="">— Root (no subfolder) —</option>
+                        </select>
+                    </div>
+                    <button type="button" class="subfolder-new-btn" id="subfolder-new-btn" onclick="toggleNewFolder()"
+                        title="Create new subfolder">
+                        <i data-lucide="folder-plus"></i>
+                    </button>
+                </div>
+                <div class="input-wrap" id="new-folder-wrap" style="display:none;margin-top:8px">
+                    <i data-lucide="folder-plus" class="input-icon"></i>
+                    <input type="text" id="upload-subfolder" placeholder="Type new subfolder name…" autocomplete="off">
+                </div>
+            </div>
+            <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()"
+                ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event)">
+                <input type="file" id="file-input" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
+                    style="display:none" onchange="addFiles(this.files)">
+                <i data-lucide="upload-cloud" class="dz-icon"></i>
+                <p class="dz-title">Drop files here or <span class="amber-highlight">click to browse</span></p>
+                <p class="dz-sub">PDF, DOC, DOCX, PPT, PPTX, TXT &middot; Max 10 files</p>
+            </div>
+            <div id="file-queue" class="file-queue hidden">
+                <div class="queue-header">
+                    <span id="queue-count">0 / 10 files</span>
+                    <button type="button" class="clear-all" onclick="clearQueue()">Clear all</button>
+                </div>
+                <div id="queue-list"></div>
+            </div>
+            <div id="upload-progress-wrap" class="upload-progress-wrap hidden">
+                <div class="progress-label">
+                    <span id="progress-label-text">Uploading…</span>
+                    <span id="progress-pct">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+            <div class="upload-footer">
+                <button class="btn-cta-ghost" onclick="closeAdminPanel()">Cancel</button>
+                <button class="btn-cta-primary modal-submit" id="upload-btn" onclick="startUpload()" disabled>
+                    <i data-lucide="upload-cloud"></i><span>Upload Files</span>
+                </button>
+            </div>
+            <div id="upload-toast" class="upload-toast hidden"></div>
+        </div>
+    </div>
+
+</body>
+
+</html>
